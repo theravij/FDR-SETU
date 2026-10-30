@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+}
+
+@keyframes pitch-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.pitch-fill {
+  transform-origin: left center;
+  animation: pitch-fill 6s linear forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pitch-fill {
+    animation: none;
+    transform: scaleX(1);
+  }
+}
