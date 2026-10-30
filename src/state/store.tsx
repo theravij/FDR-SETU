@@ -24,10 +24,13 @@ import { downloadText } from "../lib/download";
 import { clearLocationChrome } from "../lib/url";
 import type { CaseSnapshot, Evaluation, Notice, RoleId, ScreenId, Step, WorkspaceTab } from "../types";
 
+export type FlowPhase = 1 | 2 | 3 | 4;
+
 export interface DemoState {
   screen: ScreenId;
   tab: WorkspaceTab;
   step: Step;
+  phase: FlowPhase;
   caseId: string;
   role: RoleId;
   cases: Record<string, CaseSnapshot>;
@@ -40,6 +43,8 @@ type DemoAction =
   | { type: "set-role"; role: RoleId }
   | { type: "navigate"; screen?: ScreenId; tab?: WorkspaceTab; caseId?: string }
   | { type: "set-step"; step: Step }
+  | { type: "set-phase"; phase: FlowPhase }
+  | { type: "confirm-v1" }
   | { type: "reset" }
   | { type: "cosmetic" }
   | { type: "release" }
@@ -71,6 +76,7 @@ function fresh(step: Step = 1): DemoState {
     screen: "workspace",
     tab: "recheck",
     step,
+    phase: 1,
     caseId: "DEMO-001",
     role: "RO-104",
     cases: { ...seedCases(), "DEMO-001": buildDemo001(step) },
@@ -92,6 +98,7 @@ function createInitial(): DemoState {
     screen: "workspace",
     tab: "recheck",
     step: 1,
+    phase: 1,
     caseId: "DEMO-001",
     role: "RO-104",
     cases,
@@ -138,6 +145,11 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
       };
     case "set-step":
       return withCanonicalStep(state, action.step, { screen: "workspace" });
+    case "set-phase":
+      if (action.phase === 1) return withCanonicalStep(state, 1, { screen: "workspace", phase: 1, role: "RO-104" });
+      return { ...state, screen: "workspace", phase: action.phase, notice: null };
+    case "confirm-v1":
+      return withCanonicalStep(state, 2, { screen: "workspace", phase: 2, role: "RO-104" });
     case "reset":
       return fresh(1);
     case "dismiss-notice":
@@ -165,9 +177,18 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
       const decision = decideRelease(current, state.role, presented);
       return putCase(state, decision.snapshot, {
         tone: decision.ok ? "ok" : decision.http === 403 ? "deny" : "warn",
-        http: decision.http,
-        title: decision.title,
-        body: decision.body,
+        title: decision.ok
+          ? "Release authorised"
+          : decision.http === 403
+            ? "Director approval required"
+            : decision.http === 409
+              ? "Case is not ready"
+              : decision.title,
+        body: decision.ok
+          ? "The case is verified. The NOC and payment stay with the authorised AICTE process."
+          : decision.http === 403
+            ? "Only DIR-01 can authorise release."
+            : decision.body,
       });
     }
     case "gateway":
@@ -239,26 +260,19 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
       if (!can(state.role, "upload-v2")) {
         return refuse(
           state,
-          "Upload refused",
-          `${state.role} cannot upload a replacement instrument. HTTP 403. That action belongs to INST-01.`,
+          "Submission refused",
+          "Switch the acting role to INST-01 to submit the corrected instrument.",
         );
       }
-      if (state.cases["DEMO-001"].currentVersionId === "V2") {
-        return {
-          ...state,
-          notice: {
-            tone: "info",
-            title: "V2 is already current",
-            body: "DEMO-001 already has the replacement instrument.",
-          },
-        };
+      if (state.cases["DEMO-001"].currentVersionId === "V2" && state.step >= 5) {
+        return { ...state, screen: "workspace", phase: 3, notice: null };
       }
       return {
-        ...withCanonicalStep(state, 3, { screen: "workspace", tab: "recheck" }),
+        ...withCanonicalStep(state, 5, { screen: "workspace", tab: "recheck", phase: 3 }),
         notice: {
           tone: "ok",
-          title: "V2 uploaded",
-          body: "INST-01 uploaded the replacement FDR. CHK-02 is RECHECK_REQUIRED. CHK-03 and CHK-04 stay preserved. EV-BNK-101 covers V1 only.",
+          title: "Corrected instrument submitted",
+          body: "Two unchanged checks were preserved. Only modified fields were re-evaluated.",
         },
       };
     }
@@ -289,6 +303,9 @@ interface DemoApi {
   setRole: (role: RoleId) => void;
   navigate: (partial: { screen?: ScreenId; tab?: WorkspaceTab; caseId?: string }) => void;
   setStep: (step: Step) => void;
+  setPhase: (phase: FlowPhase) => void;
+  confirmV1: () => void;
+  submitV2: () => void;
   reset: () => void;
   dismissNotice: () => void;
   cosmeticRescan: () => void;
@@ -342,6 +359,9 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       setRole: (role) => send({ type: "set-role", role }),
       navigate: (partial) => send({ type: "navigate", ...partial }),
       setStep: (step) => send({ type: "set-step", step }),
+      setPhase: (phase) => send({ type: "set-phase", phase }),
+      confirmV1: () => send({ type: "confirm-v1" }),
+      submitV2: () => send({ type: "upload-v2" }),
       reset: () => {
         localStorage.removeItem(STORAGE_KEY);
         send({ type: "reset" });
@@ -357,7 +377,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       toggleVigilance: (caseId) => send({ type: "vigilance", caseId }),
       exportJson: () => {
         const snapshot = state.cases[state.caseId];
-        void evaluateCaseWithFallback(snapshot).then(({ evaluation, source }) => {
+        void evaluateCaseWithFallback(snapshot).then(({ evaluation }) => {
           downloadText(
             `${snapshot.caseId}-evaluate-case.json`,
             `${JSON.stringify(evaluation, null, 2)}\n`,
@@ -368,10 +388,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
             notice: {
               tone: "ok",
               title: "JSON exported",
-              body:
-                source === "api"
-                  ? `${snapshot.caseId}-evaluate-case.json downloaded from the API. It matches the in-browser engine.`
-                  : `${snapshot.caseId}-evaluate-case.json downloaded from the in-browser engine.`,
+              body: `${snapshot.caseId} verification file downloaded.`,
             },
           });
         });
@@ -383,7 +400,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
           notice: {
             tone: "ok",
             title: "CSV exported",
-            body: "fdr-setu-register.csv downloaded for DEMO-001 through DEMO-005.",
+            body: "The officer register was downloaded.",
           },
         });
       },

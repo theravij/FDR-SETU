@@ -23,10 +23,7 @@ function NoticeBar() {
   return (
     <div className={`flex shrink-0 items-start gap-3 border-b px-4 py-1.5 text-[12px] ${tone}`}>
       <p className="min-w-0 leading-snug">
-        <span className="font-semibold">
-          {notice.http ? `HTTP ${notice.http} · ` : ""}
-          {notice.title}.
-        </span>{" "}
+        <span className="font-semibold">{notice.title}.</span>{" "}
         <span className="line-clamp-2">{notice.body}</span>
       </p>
       <button

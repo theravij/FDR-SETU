@@ -15,7 +15,7 @@ export function travelMs(from: Point, to: Point): number {
   const distance = Math.hypot(to.x - from.x, to.y - from.y);
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (reduced) return Math.min(220, Math.max(80, distance * 0.2));
-  return Math.min(920, Math.max(420, distance * 0.85));
+  return Math.min(1100, Math.max(480, distance * 0.95));
 }
 
 export function centerOf(el: Element): Point {
@@ -23,7 +23,7 @@ export function centerOf(el: Element): Point {
   return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
 }
 
-export function waitForElement(selector: string, timeoutMs = 2800): Promise<HTMLElement | null> {
+export function waitForElement(selector: string, timeoutMs = 4200): Promise<HTMLElement | null> {
   const started = Date.now();
   return new Promise((resolve) => {
     const tick = () => {
@@ -31,16 +31,17 @@ export function waitForElement(selector: string, timeoutMs = 2800): Promise<HTML
       if (node instanceof HTMLElement) {
         const box = node.getBoundingClientRect();
         if (box.width > 0 && box.height > 0) {
+          window.clearInterval(timer);
           resolve(node);
           return;
         }
       }
       if (Date.now() - started >= timeoutMs) {
+        window.clearInterval(timer);
         resolve(null);
-        return;
       }
-      window.requestAnimationFrame(tick);
     };
+    const timer = window.setInterval(tick, 50);
     tick();
   });
 }
@@ -54,21 +55,31 @@ export function animatePoint(
 ): Promise<void> {
   return new Promise((resolve) => {
     const started = performance.now();
-    const step = (now: number) => {
+    let done = false;
+    const finish = (point: Point) => {
+      if (done) return;
+      done = true;
+      window.clearInterval(timer);
+      apply(point);
+      resolve();
+    };
+    const tick = () => {
       if (cancelled()) {
-        resolve();
+        finish(to);
         return;
       }
-      const t = durationMs <= 0 ? 1 : Math.min(1, (now - started) / durationMs);
+      const t = durationMs <= 0 ? 1 : Math.min(1, (performance.now() - started) / durationMs);
       const e = easeInOutCubic(t);
-      apply({
+      const point = {
         x: from.x + (to.x - from.x) * e,
         y: from.y + (to.y - from.y) * e,
-      });
-      if (t < 1) window.requestAnimationFrame(step);
-      else resolve();
+      };
+      apply(point);
+      if (t >= 1) finish(to);
     };
-    window.requestAnimationFrame(step);
+    const timer = window.setInterval(tick, 16);
+    tick();
+    window.setTimeout(() => finish(to), Math.max(durationMs, 0) + 80);
   });
 }
 

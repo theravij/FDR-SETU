@@ -7,7 +7,7 @@ const FILTERS = ["All", "Discrepancy", "Recheck", "Ready", "Released", "Hold"] a
 type Filter = (typeof FILTERS)[number];
 
 export function QueueScreen() {
-  const { state, navigate, toggleVigilance } = useDemo();
+  const { state, navigate, setPhase } = useDemo();
   const [filter, setFilter] = useState<Filter>("All");
   const rows = useMemo(() => registerRows(Object.values(state.cases)), [state.cases]);
   const visible = rows.filter((row) => {
@@ -21,8 +21,8 @@ export function QueueScreen() {
 
   return (
     <ScreenFrame
-      title="Officer Queue & Register"
-      meta="NOC route for FDR and RPGF. Sanction-order route for RTGS. Policy DEMO-POLICY-6.46."
+      title="Officer Queue"
+      meta="Open FDR and sanction-order files awaiting review."
       actions={
         <div className="flex gap-1">
           {FILTERS.map((item) => (
@@ -44,7 +44,7 @@ export function QueueScreen() {
       <table className="w-full border-collapse bg-white text-left">
         <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
           <tr>
-            {["Case", "Institution", "Route", "Status", "Ageing", "Assignee", "Next", "Escalation", ""].map((heading) => (
+            {["Case", "Institution", "Route", "Status", "Ageing", "Assignee", "Next", ""].map((heading) => (
               <th key={heading} className="border-b border-slate-200 px-3 py-2 font-semibold">
                 {heading}
               </th>
@@ -63,20 +63,17 @@ export function QueueScreen() {
               <td className="border-b border-slate-100 px-3 py-2 text-right text-[12px] tabular-nums">{row.ageingDays}d</td>
               <td className="border-b border-slate-100 px-3 py-2 text-[12px]">{row.assignee}</td>
               <td className="border-b border-slate-100 px-3 py-2 text-[12px]">{row.nextActor}</td>
-              <td className="border-b border-slate-100 px-3 py-2 font-mono text-[11px] text-slate-600">{row.escalationId || "—"}</td>
               <td className="border-b border-slate-100 px-3 py-2">
                 <div className="flex justify-end gap-1">
                   <Btn
                     data-tour={`open-${row.caseId}`}
-                    onClick={() => navigate({ screen: "workspace", tab: "recheck", caseId: row.caseId })}
+                    onClick={() => {
+                      if (row.caseId === "DEMO-001") setPhase(1);
+                      navigate({ screen: "workspace", tab: "recheck", caseId: row.caseId });
+                    }}
                   >
                     Open
                   </Btn>
-                  {row.caseId === "DEMO-004" ? (
-                    <Btn kind={row.vigilanceHold ? "secondary" : "danger"} onClick={() => toggleVigilance(row.caseId)}>
-                      {row.vigilanceHold ? "Lift hold" : "Place hold"}
-                    </Btn>
-                  ) : null}
                 </div>
               </td>
             </tr>

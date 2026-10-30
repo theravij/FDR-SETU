@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import type { CheckStatus } from "../types";
-import { statusText } from "../lib/format";
+import { displayStatus } from "../lib/labels";
 
 const STATUS_CLASS: Record<string, string> = {
   DISCREPANCY: "border-rose-200 bg-rose-50 text-crimson",
@@ -11,21 +11,18 @@ const STATUS_CLASS: Record<string, string> = {
   PRESERVED: "border-emerald-300 bg-emerald-50 text-emerald-900",
   PENDING: "border-slate-200 bg-slate-50 text-slate-600",
   BLOCKED: "border-rose-200 bg-rose-50 text-crimson",
-  RELEASED: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  RELEASED: "border-emerald-300 bg-emerald-50 text-emerald-900",
   "READY FOR RELEASE": "border-emerald-200 bg-emerald-50 text-emerald-900",
   "VIGILANCE HOLD": "border-amber-300 bg-amber-50 text-amber-950",
   "IN PROGRESS": "border-slate-200 bg-slate-50 text-slate-700",
 };
 
 export function StatusBadge({ status }: { status: CheckStatus | string }) {
-  const label = status in { PRESERVED_CONFIRMED: 1, RECHECK_REQUIRED: 1 }
-    ? statusText(status as CheckStatus)
-    : status;
   return (
     <span
       className={`inline-flex items-center whitespace-nowrap border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${STATUS_CLASS[status] ?? "border-slate-200 bg-slate-50 text-slate-700"}`}
     >
-      {label}
+      {displayStatus(status)}
     </span>
   );
 }

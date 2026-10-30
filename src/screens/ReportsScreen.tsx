@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { registerRows, type RegisterRow } from "../engine/register";
 import { useDemo } from "../state/store";
-import { ScreenFrame } from "../components/ui";
+import { ScreenFrame, StatusBadge } from "../components/ui";
 
 function bucket(days: number): string {
   if (days <= 7) return "0–7 days";
@@ -32,7 +32,7 @@ export function ReportsScreen() {
 
   return (
     <ScreenFrame
-      title="Workload & Ageing Reports"
+      title="Workload Summary"
       meta={`As of 2026-10-30. Open cases: ${open.length}. Mean open ageing: ${open.length ? Math.round(openAge / open.length) : 0} days.`}
     >
       <div className="grid gap-3 p-3 lg:grid-cols-3">
@@ -68,7 +68,7 @@ export function ReportsScreen() {
                 {due.map((action) => (
                   <tr key={`${action.caseId}-${action.id}`} className="border-t border-slate-100 text-[12px]">
                     <td className="px-3 py-1.5 font-mono">{action.caseId}</td>
-                    <td className="px-3 py-1.5 font-mono">{action.id}</td>
+                    <td className="px-3 py-1.5">{action.id === "MAT-01" ? "Maturity review" : action.id}</td>
                     <td className="px-3 py-1.5">{action.responsibleRole}</td>
                     <td className="px-3 py-1.5">{action.dueOn}</td>
                     <td className="px-3 py-1.5 text-slate-700">{action.nextAction}</td>
@@ -94,7 +94,9 @@ export function ReportsScreen() {
               {rows.map((row) => (
                 <tr key={row.caseId} className="border-t border-slate-100 text-[12px]">
                   <td className="px-3 py-1.5 font-mono">{row.caseId}</td>
-                  <td className="px-3 py-1.5">{row.statusLabel}</td>
+                  <td className="px-3 py-1.5">
+                    <StatusBadge status={row.statusLabel} />
+                  </td>
                   <td className="px-3 py-1.5">{row.routeLabel}</td>
                   <td className="px-3 py-1.5 tabular-nums">{row.ageingDays}d</td>
                   <td className="px-3 py-1.5">{row.assignee}</td>

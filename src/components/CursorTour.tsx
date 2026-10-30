@@ -70,39 +70,45 @@ export function TourController({ children }: { children: ReactNode }) {
     setRunning(true);
     setVisible(true);
     reset();
-    await sleep(280);
+    await sleep(480);
     if (cancel.current) return;
     const origin = document.querySelector("[data-tour-toggle]");
     if (origin instanceof HTMLElement) setPointBoth(centerOf(origin));
 
-    for (const beat of CURSOR_TOUR) {
-      if (cancel.current) return;
-      const el = await waitForElement(beat.selector);
-      if (cancel.current) return;
-      if (!el) continue;
-      const target = centerOf(el);
-      await animatePoint(pointRef.current, target, travelMs(pointRef.current, target), setPointBoth, () => cancel.current);
-      if (cancel.current) return;
-      setPointBoth(centerOf(el));
-      clearHover();
-      el.classList.add("tour-target");
-      hoverEl.current = el;
-      await sleep(140);
-      if (cancel.current) return;
-      setPressing(true);
-      await sleep(90);
-      pressElement(el);
-      await sleep(120);
-      setPressing(false);
-      await sleep(beat.dwell);
-    }
-
-    if (!cancel.current) {
-      clearHover();
-      runningRef.current = false;
-      setRunning(false);
-      setVisible(false);
-      setPressing(false);
+    try {
+      for (const beat of CURSOR_TOUR) {
+        if (cancel.current) return;
+        const el = await waitForElement(beat.selector);
+        if (cancel.current) return;
+        if (!el) continue;
+        const target = centerOf(el);
+        await animatePoint(pointRef.current, target, travelMs(pointRef.current, target), setPointBoth, () => cancel.current);
+        if (cancel.current) return;
+        setPointBoth(centerOf(el));
+        clearHover();
+        el.classList.add("tour-target");
+        hoverEl.current = el;
+        await sleep(140);
+        if (cancel.current) return;
+        setPressing(true);
+        await sleep(90);
+        try {
+          pressElement(el);
+        } catch {
+          /* keep walking even if a target is not clickable */
+        }
+        await sleep(220);
+        setPressing(false);
+        await sleep(beat.dwell);
+      }
+    } finally {
+      if (!cancel.current) {
+        clearHover();
+        runningRef.current = false;
+        setRunning(false);
+        setVisible(false);
+        setPressing(false);
+      }
     }
   }, [reset]);
 
