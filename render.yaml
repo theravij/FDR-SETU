@@ -1,14 +1,10 @@
 services:
   - type: web
-    name: fdr-setu-api
+    name: fdr-setu-backend
     runtime: node
     plan: free
-    region: oregon
     branch: main
     autoDeployTrigger: commit
-    buildCommand: npm ci
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /health
-    envVars:
-      - key: NODE_ENV
-        value: production
