@@ -4,7 +4,13 @@ export interface Point {
 }
 
 export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
+  return new Promise((resolve) => window.setTimeout(resolve, Math.max(0, ms)));
+}
+
+export async function sleepUntil(deadlineMs: number, cancelled: () => boolean): Promise<void> {
+  while (!cancelled() && performance.now() < deadlineMs) {
+    await sleep(Math.min(40, deadlineMs - performance.now()));
+  }
 }
 
 export function easeInOutCubic(t: number): number {
@@ -23,10 +29,19 @@ export function centerOf(el: Element): Point {
   return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
 }
 
-export function waitForElement(selector: string, timeoutMs = 4200): Promise<HTMLElement | null> {
+export function waitForElement(
+  selector: string,
+  timeoutMs = 4200,
+  cancelled?: () => boolean,
+): Promise<HTMLElement | null> {
   const started = Date.now();
   return new Promise((resolve) => {
     const tick = () => {
+      if (cancelled?.()) {
+        window.clearInterval(timer);
+        resolve(null);
+        return;
+      }
       const node = document.querySelector(selector);
       if (node instanceof HTMLElement) {
         const box = node.getBoundingClientRect();

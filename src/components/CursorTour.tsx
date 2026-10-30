@@ -8,13 +8,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { CURSOR_TOUR } from "../data/cursorTour";
+import { CURSOR_TOUR, PRESS_LEAD_MS, TOUR_DURATION_MS } from "../data/cursorTour";
 import {
   animatePoint,
   centerOf,
   pressElement,
   sleep,
-  travelMs,
+  sleepUntil,
   waitForElement,
   type Point,
 } from "../lib/cursorMotion";
@@ -27,11 +27,36 @@ interface TourApi {
 }
 
 const TourContext = createContext<TourApi | null>(null);
+const VOICEOVER_SRC = "/demo-voiceover.mp3";
 
 export function useTour(): TourApi {
   const api = useContext(TourContext);
   if (!api) throw new Error("useTour must be used inside TourController");
   return api;
+}
+
+function startVoiceover(): HTMLAudioElement | null {
+  try {
+    const audio = new Audio(VOICEOVER_SRC);
+    audio.preload = "auto";
+    audio.addEventListener("error", () => undefined);
+    audio.currentTime = 0;
+    const play = audio.play();
+    if (play) void play.catch(() => undefined);
+    return audio;
+  } catch {
+    return null;
+  }
+}
+
+function stopVoiceover(audio: HTMLAudioElement | null): void {
+  if (!audio) return;
+  try {
+    audio.pause();
+    audio.currentTime = 0;
+  } catch {
+    /* file missing or autoplay blocked */
+  }
 }
 
 export function TourController({ children }: { children: ReactNode }) {
@@ -44,6 +69,7 @@ export function TourController({ children }: { children: ReactNode }) {
   const runningRef = useRef(false);
   const pointRef = useRef<Point>(point);
   const hoverEl = useRef<HTMLElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const setPointBoth = (next: Point) => {
     pointRef.current = next;
@@ -58,6 +84,8 @@ export function TourController({ children }: { children: ReactNode }) {
   const stop = useCallback(() => {
     cancel.current = true;
     runningRef.current = false;
+    stopVoiceover(audioRef.current);
+    audioRef.current = null;
     setRunning(false);
     setVisible(false);
     setPressing(false);
@@ -69,40 +97,28 @@ export function TourController({ children }: { children: ReactNode }) {
     runningRef.current = true;
     setRunning(true);
     setVisible(true);
+    const startedAt = performance.now();
+    audioRef.current = startVoiceover();
     reset();
-    await sleep(480);
-    if (cancel.current) return;
+
     const origin = document.querySelector("[data-tour-toggle]");
     if (origin instanceof HTMLElement) setPointBoth(centerOf(origin));
 
     try {
       for (const beat of CURSOR_TOUR) {
         if (cancel.current) return;
-        const el = await waitForElement(beat.selector);
+        const clickAt = startedAt + beat.clickAt;
+        const waitMs = Math.max(200, clickAt - PRESS_LEAD_MS - performance.now());
+        const el = await waitForElement(beat.selector, waitMs, () => cancel.current);
         if (cancel.current) return;
         if (!el) continue;
-        const target = centerOf(el);
-        await animatePoint(pointRef.current, target, travelMs(pointRef.current, target), setPointBoth, () => cancel.current);
-        if (cancel.current) return;
-        setPointBoth(centerOf(el));
-        clearHover();
-        el.classList.add("tour-target");
-        hoverEl.current = el;
-        await sleep(140);
-        if (cancel.current) return;
-        setPressing(true);
-        await sleep(90);
-        try {
-          pressElement(el);
-        } catch {
-          /* keep walking even if a target is not clickable */
-        }
-        await sleep(220);
-        setPressing(false);
-        await sleep(beat.dwell);
+        await runClick(el, clickAt);
       }
+      await sleepUntil(startedAt + TOUR_DURATION_MS, () => cancel.current);
     } finally {
       if (!cancel.current) {
+        stopVoiceover(audioRef.current);
+        audioRef.current = null;
         clearHover();
         runningRef.current = false;
         setRunning(false);
@@ -111,6 +127,29 @@ export function TourController({ children }: { children: ReactNode }) {
       }
     }
   }, [reset]);
+
+  const runClick = async (el: HTMLElement, clickAt: number) => {
+    const target = centerOf(el);
+    const moveMs = Math.max(80, clickAt - PRESS_LEAD_MS - performance.now());
+    await animatePoint(pointRef.current, target, moveMs, setPointBoth, () => cancel.current);
+    if (cancel.current) return;
+    setPointBoth(centerOf(el));
+    await sleepUntil(clickAt - PRESS_LEAD_MS, () => cancel.current);
+    if (cancel.current) return;
+    clearHover();
+    el.classList.add("tour-target");
+    hoverEl.current = el;
+    await sleep(140);
+    if (cancel.current) return;
+    setPressing(true);
+    await sleep(90);
+    try {
+      pressElement(el);
+    } catch {
+      /* keep walking even if a target is not clickable */
+    }
+    setPressing(false);
+  };
 
   const toggle = useCallback(() => {
     if (runningRef.current) stop();
