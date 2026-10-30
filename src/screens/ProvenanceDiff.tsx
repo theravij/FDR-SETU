@@ -89,7 +89,7 @@ export function ProvenanceDiff() {
       </div>
       <p className="shrink-0 text-[11px] text-slate-600">
         Amber rows are material differences. A cosmetic rescan changes only the file sha256 row, and that row affects no check.
-        {hasV2 ? " Identity and lien rows stay unchanged, which is why CHK-03 and CHK-04 can be preserved." : " Upload V2 from the institution portal, or open step 3, to see the diff."}
+        {hasV2 ? " Identity and lien rows stay unchanged, which is why CHK-03 and CHK-04 can be preserved." : " Upload a replacement instrument from the Institution Portal to see the field-level change."}
       </p>
     </div>
   );

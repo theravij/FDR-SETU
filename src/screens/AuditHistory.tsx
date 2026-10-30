@@ -14,7 +14,7 @@ export function AuditHistory() {
         <StatusBadge status={intact ? "CONFIRMED" : "DISCREPANCY"} />
         <p className="text-[12px] text-slate-700">
           {intact
-            ? "Chain intact. Each event hash commits the previous hash. Events are not editable in this simulation."
+            ? "Chain intact. Each event hash commits the previous hash. The ledger is append-only."
             : "Chain failed verification."}
         </p>
       </div>

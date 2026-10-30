@@ -5,8 +5,7 @@ import { InstitutionScreen } from "../screens/InstitutionScreen";
 import { QueueScreen } from "../screens/QueueScreen";
 import { ReportsScreen } from "../screens/ReportsScreen";
 import { WorkspaceScreen } from "../screens/WorkspaceScreen";
-import { Banner } from "./Banner";
-import { PitchBar } from "./PitchBar";
+import { TourController } from "./CursorTour";
 import { Sidebar } from "./Sidebar";
 
 function NoticeBar() {
@@ -45,20 +44,20 @@ function NoticeBar() {
 export function Shell() {
   const { state } = useDemo();
   return (
-    <div className="h-screen w-screen overflow-hidden flex flex-col">
-      <Banner />
-      <PitchBar />
-      <div className="flex min-h-0 flex-1">
-        <Sidebar />
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <NoticeBar />
-          {state.screen === "workspace" ? <WorkspaceScreen /> : null}
-          {state.screen === "queue" ? <QueueScreen /> : null}
-          {state.screen === "institution" ? <InstitutionScreen /> : null}
-          {state.screen === "reports" ? <ReportsScreen /> : null}
-          {state.screen === "baseline" ? <BaselineScreen /> : null}
-        </main>
+    <TourController>
+      <div className="h-screen w-screen overflow-hidden flex flex-col">
+        <div className="flex min-h-0 flex-1">
+          <Sidebar />
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <NoticeBar />
+            {state.screen === "workspace" ? <WorkspaceScreen /> : null}
+            {state.screen === "queue" ? <QueueScreen /> : null}
+            {state.screen === "institution" ? <InstitutionScreen /> : null}
+            {state.screen === "reports" ? <ReportsScreen /> : null}
+            {state.screen === "baseline" ? <BaselineScreen /> : null}
+          </main>
+        </div>
       </div>
-    </div>
+    </TourController>
   );
 }

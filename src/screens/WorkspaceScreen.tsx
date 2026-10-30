@@ -1,5 +1,6 @@
-import { ageingDays, routeLabel } from "../lib/format";
+import { ageingDays, formatInr, routeLabel } from "../lib/format";
 import { useDemo } from "../state/store";
+import { currentVersion } from "../engine/evaluateCase";
 import type { WorkspaceTab } from "../types";
 import { AuditHistory } from "./AuditHistory";
 import { Clearances } from "./Clearances";
@@ -13,17 +14,37 @@ const TABS: Array<{ id: WorkspaceTab; label: string }> = [
   { id: "provenance", label: "Document & 4-Tier Provenance Diff" },
   { id: "clearances", label: "Clearances & Edge-Case Tests" },
   { id: "audit", label: "Immutable Audit History" },
-  { id: "result", label: "Final Result + evaluate_case() JSON" },
+  { id: "result", label: "Verification Summary & Payload" },
 ];
 
 export function WorkspaceScreen() {
   const { state, evaluation, navigate } = useDemo();
   const snapshot = state.cases[state.caseId];
-  const answers = [
-    ["What is current?", evaluation.officerAnswers.whatIsCurrent],
-    ["Independently confirmed?", evaluation.officerAnswers.independentlyConfirmed],
-    ["Unresolved?", evaluation.officerAnswers.unresolved],
-    ["Who acts next?", evaluation.officerAnswers.whoActsNext],
+  const version = currentVersion(snapshot);
+  const pending = evaluation.checks.filter(
+    (check) => check.status !== "CONFIRMED" && check.status !== "PRESERVED_CONFIRMED",
+  );
+  const metrics = [
+    {
+      label: "Active Instrument",
+      value: `${version.versionId} · ${version.fields.referenceNumber}`,
+      detail: `Observed ${formatInr(evaluation.observedAmountInr)}`,
+    },
+    {
+      label: "Verification Status",
+      value: evaluation.statusLabel,
+      detail: evaluation.releaseAuthorised ? "Decision recorded" : evaluation.releaseReady ? "Ready for decision" : "In progress",
+    },
+    {
+      label: "Pending Checks",
+      value: pending.length === 0 ? "None" : pending.map((check) => check.id).join(" · "),
+      detail: `${evaluation.checks.length} checks on file`,
+    },
+    {
+      label: "Assigned Authority",
+      value: evaluation.nextActor,
+      detail: evaluation.releaseAuthorised ? "No further action" : evaluation.releaseReady ? "Review decision pending" : "Action required",
+    },
   ];
 
   return (
@@ -45,10 +66,11 @@ export function WorkspaceScreen() {
       </header>
 
       <div className="grid shrink-0 grid-cols-4 gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
-        {answers.map(([question, answer]) => (
-          <article key={question} className="min-w-0 border border-slate-200 bg-white px-2 py-1.5" title={answer}>
-            <h2 className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{question}</h2>
-            <p className="line-clamp-2 text-[11px] leading-snug text-slate-800">{answer}</p>
+        {metrics.map((item) => (
+          <article key={item.label} className="min-w-0 border border-slate-200 bg-white px-2 py-1.5" title={item.detail}>
+            <h2 className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{item.label}</h2>
+            <p className="truncate text-[12px] font-semibold leading-snug text-navy">{item.value}</p>
+            <p className="line-clamp-1 text-[11px] text-slate-600">{item.detail}</p>
           </article>
         ))}
       </div>
@@ -61,6 +83,7 @@ export function WorkspaceScreen() {
               key={tab.id}
               type="button"
               role="tab"
+              data-tour={`tab-${tab.id}`}
               aria-selected={selected}
               onClick={() => navigate({ tab: tab.id })}
               className={`border-b-2 px-2 py-2 text-[12px] font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-navy ${

@@ -18,7 +18,7 @@ export function InstitutionScreen() {
           : "Officer view of every institution. Uploading a replacement is reserved for INST-01."
       }
       actions={
-        <Btn kind="primary" onClick={uploadV2}>
+        <Btn kind="primary" data-tour="upload-v2" onClick={uploadV2}>
           {state.role === "INST-01" && demo.currentVersionId === "V2" ? "V2 already uploaded" : "Upload V2 replacement"}
         </Btn>
       }

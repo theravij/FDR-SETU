@@ -1,9 +1,9 @@
-import { BarChart3, Download, GitCompare, Landmark, List, RotateCcw, Scale } from "lucide-react";
+import { BarChart3, Download, GitCompare, Landmark, List, Scale } from "lucide-react";
 import type { ReactNode } from "react";
 import { ROLES } from "../engine/permissions";
-import { apiBaseUrl } from "../lib/api";
 import { useDemo } from "../state/store";
 import type { RoleId, ScreenId } from "../types";
+import { TourToggle } from "./CursorTour";
 
 const NAV: Array<{ id: ScreenId; label: string; hint: string; icon: ReactNode }> = [
   { id: "workspace", label: "Case Workspace", hint: "DEMO-001", icon: <Scale size={15} aria-hidden /> },
@@ -14,7 +14,7 @@ const NAV: Array<{ id: ScreenId; label: string; hint: string; icon: ReactNode }>
 ];
 
 export function Sidebar() {
-  const { state, engineSource, navigate, setRole, exportJson, exportCsv, reset } = useDemo();
+  const { state, navigate, setRole, exportJson, exportCsv, reset } = useDemo();
   const role = ROLES.find((item) => item.id === state.role) ?? ROLES[0];
   const workspaceHint = state.caseId;
 
@@ -23,7 +23,7 @@ export function Sidebar() {
       <div className="border-b border-slate-200 px-3 py-2.5">
         <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">SIH26265</p>
         <p className="text-sm font-semibold text-navy">FDR Setu</p>
-        <p className="text-[11px] leading-snug text-slate-500">AICTE security-deposit cases. Sample workflow only.</p>
+        <p className="text-[11px] leading-snug text-slate-500">AICTE Security Deposit Verification Portal</p>
       </div>
       <nav className="min-h-0 flex-1 overflow-auto p-2" aria-label="Screens">
         {NAV.map((item) => {
@@ -34,6 +34,7 @@ export function Sidebar() {
             <button
               key={item.id}
               type="button"
+              data-tour={`nav-${item.id}`}
               onClick={() => navigate({ screen: item.id })}
               aria-current={active ? "page" : undefined}
               className={`mb-1 flex w-full items-start gap-2 border px-2 py-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy ${
@@ -56,6 +57,7 @@ export function Sidebar() {
             <button
               key={item.id}
               type="button"
+              data-tour={`role-${item.id}`}
               aria-pressed={state.role === item.id}
               onClick={() => setRole(item.id as RoleId)}
               className={`border px-1.5 py-1 text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy ${
@@ -69,13 +71,6 @@ export function Sidebar() {
         <p className="px-1 pt-1.5 text-[10px] leading-snug text-slate-600">
           <span className="font-semibold text-navy">{role.title}.</span> {role.summary}
         </p>
-        <p className="truncate px-1 pt-1 text-[10px] text-slate-500">
-          {apiBaseUrl() === ""
-            ? "Engine: in-browser"
-            : engineSource === "api"
-              ? "Engine: API confirmed"
-              : "Engine: in-browser (API unavailable)"}
-        </p>
         <div className="mt-2 grid grid-cols-1 gap-1">
           <button type="button" onClick={exportJson} className="inline-flex items-center gap-1.5 border border-slate-300 bg-white px-2 py-1 text-[12px] font-medium text-navy hover:bg-slate-50">
             <Download size={13} aria-hidden /> Export JSON
@@ -83,8 +78,11 @@ export function Sidebar() {
           <button type="button" onClick={exportCsv} className="inline-flex items-center gap-1.5 border border-slate-300 bg-white px-2 py-1 text-[12px] font-medium text-navy hover:bg-slate-50">
             <Download size={13} aria-hidden /> Export CSV
           </button>
-          <button type="button" onClick={reset} className="inline-flex items-center gap-1.5 border border-slate-300 bg-white px-2 py-1 text-[12px] font-medium text-navy hover:bg-slate-50">
-            <RotateCcw size={13} aria-hidden /> Reset Demo State
+        </div>
+        <div className="mt-2 flex items-center justify-between px-0.5">
+          <TourToggle />
+          <button type="button" onClick={reset} className="text-[11px] text-slate-500 underline-offset-2 hover:text-navy hover:underline">
+            Reset Workspace
           </button>
         </div>
       </div>

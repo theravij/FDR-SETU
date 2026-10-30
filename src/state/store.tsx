@@ -4,13 +4,10 @@ import {
   useEffect,
   useMemo,
   useReducer,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { buildDemo001, seedCases } from "../data/cases";
-import { FLOW_DURATION_MS, FLOW_PHASES, phaseAt, type FlowPhase } from "../data/demoFlow";
-import { PITCH } from "../data/pitch";
 import {
   applyCosmeticRescan,
   applyEscalation,
@@ -24,7 +21,7 @@ import { can } from "../engine/permissions";
 import { registerCsv } from "../engine/register";
 import { evaluateCaseWithFallback, type EngineSource } from "../lib/api";
 import { downloadText } from "../lib/download";
-import { readUrl, writeUrl, type UrlState } from "../lib/url";
+import { clearLocationChrome } from "../lib/url";
 import type { CaseSnapshot, Evaluation, Notice, RoleId, ScreenId, Step, WorkspaceTab } from "../types";
 
 export interface DemoState {
@@ -34,22 +31,15 @@ export interface DemoState {
   caseId: string;
   role: RoleId;
   cases: Record<string, CaseSnapshot>;
-  pitchPlaying: boolean;
-  pitchIndex: number;
   gatewayOutage: boolean;
   frozenHash: string | null;
   notice: Notice | null;
 }
 
 type DemoAction =
-  | { type: "apply-url"; url: UrlState }
   | { type: "set-role"; role: RoleId }
   | { type: "navigate"; screen?: ScreenId; tab?: WorkspaceTab; caseId?: string }
   | { type: "set-step"; step: Step }
-  | { type: "pitch-to"; index: number }
-  | { type: "pitch-advance" }
-  | { type: "toggle-pitch" }
-  | { type: "flow-go"; phase: FlowPhase }
   | { type: "reset" }
   | { type: "cosmetic" }
   | { type: "release" }
@@ -63,11 +53,6 @@ type DemoAction =
   | { type: "notify"; notice: Notice };
 
 const STORAGE_KEY = "fdr-setu-demo-v1";
-
-function pitchIndexFor(step: Step): number {
-  const index = PITCH.findIndex((stage) => stage.step === step);
-  return index === -1 ? 0 : index;
-}
 
 function loadStored(): { cases?: Record<string, CaseSnapshot>; gatewayOutage?: boolean } | null {
   try {
@@ -89,8 +74,6 @@ function fresh(step: Step = 1): DemoState {
     caseId: "DEMO-001",
     role: "RO-104",
     cases: { ...seedCases(), "DEMO-001": buildDemo001(step) },
-    pitchPlaying: false,
-    pitchIndex: pitchIndexFor(step),
     gatewayOutage: false,
     frozenHash: null,
     notice: null,
@@ -99,24 +82,19 @@ function fresh(step: Step = 1): DemoState {
 
 function createInitial(): DemoState {
   const stored = loadStored();
-  const url = readUrl();
-  const step = url.step ?? 1;
   const cases = seedCases();
   for (const [id, snapshot] of Object.entries(stored?.cases ?? {})) {
     if (id === "DEMO-001" || !snapshot?.versions?.length || snapshot.caseId !== id) continue;
     cases[id] = snapshot;
   }
-  cases["DEMO-001"] = buildDemo001(step);
-  const requestedCase = url.caseId && cases[url.caseId] ? url.caseId : "DEMO-001";
+  cases["DEMO-001"] = buildDemo001(1);
   return {
-    screen: url.screen ?? "workspace",
-    tab: url.tab ?? "recheck",
-    step,
-    caseId: requestedCase,
-    role: url.role ?? "RO-104",
+    screen: "workspace",
+    tab: "recheck",
+    step: 1,
+    caseId: "DEMO-001",
+    role: "RO-104",
     cases,
-    pitchPlaying: false,
-    pitchIndex: pitchIndexFor(step),
     gatewayOutage: stored?.gatewayOutage ?? false,
     frozenHash: null,
     notice: null,
@@ -132,7 +110,6 @@ function withCanonicalStep(state: DemoState, step: Step, patch: Partial<DemoStat
     cases: { ...state.cases, "DEMO-001": buildDemo001(step) },
     frozenHash: null,
     notice: null,
-    pitchIndex: pitchIndexFor(step),
   };
 }
 
@@ -150,24 +127,6 @@ function refuse(state: DemoState, title: string, body: string): DemoState {
 
 function reduce(state: DemoState, action: DemoAction): DemoState {
   switch (action.type) {
-    case "apply-url": {
-      const step = action.url.step ?? state.step;
-      const caseId = action.url.caseId && state.cases[action.url.caseId] ? action.url.caseId : state.caseId;
-      const next: DemoState = {
-        ...state,
-        screen: action.url.screen ?? state.screen,
-        tab: action.url.tab ?? state.tab,
-        role: action.url.role ?? state.role,
-        caseId,
-        step,
-        pitchIndex: pitchIndexFor(step),
-      };
-      if (action.url.step && action.url.step !== state.step) {
-        next.cases = { ...state.cases, "DEMO-001": buildDemo001(action.url.step) };
-        next.frozenHash = null;
-      }
-      return next;
-    }
     case "set-role":
       return { ...state, role: action.role };
     case "navigate":
@@ -179,37 +138,6 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
       };
     case "set-step":
       return withCanonicalStep(state, action.step, { screen: "workspace" });
-    case "pitch-to": {
-      const stage = PITCH[action.index] ?? PITCH[0];
-      return withCanonicalStep(state, stage.step, {
-        screen: stage.screen,
-        tab: stage.tab,
-        pitchPlaying: state.pitchPlaying,
-      });
-    }
-    case "pitch-advance": {
-      const index = (state.pitchIndex + 1) % PITCH.length;
-      const stage = PITCH[index];
-      return withCanonicalStep(state, stage.step, {
-        screen: stage.screen,
-        tab: stage.tab,
-        pitchPlaying: true,
-      });
-    }
-    case "toggle-pitch":
-      return { ...state, pitchPlaying: !state.pitchPlaying };
-    case "flow-go": {
-      const next = withCanonicalStep(state, action.phase.step, {
-        screen: action.phase.screen,
-        tab: action.phase.tab,
-        role: action.phase.role,
-        pitchPlaying: false,
-      });
-      return {
-        ...next,
-        notice: { tone: "info", title: action.phase.title, body: action.phase.body },
-      };
-    }
     case "reset":
       return fresh(1);
     case "dismiss-notice":
@@ -250,8 +178,8 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
           tone: "warn",
           title: state.gatewayOutage ? "Bank gateway restored" : "Bank gateway outage",
           body: state.gatewayOutage
-            ? "The simulated gateway is online. New confirmations can be T1 again."
-            : "The simulated bank gateway is down. A manual letter may be recorded. It will stay T4 and will not be labelled as an API confirmation.",
+            ? "The bank gateway is online. New confirmations can be T1 again."
+            : "The bank gateway is down. A manual letter may be recorded. It will stay T4 and will not be labelled as an API confirmation.",
         },
       };
     case "manual-letter": {
@@ -321,7 +249,7 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
           notice: {
             tone: "info",
             title: "V2 is already current",
-            body: "DEMO-001 already has the replacement instrument. Open step 3 to see the selective recheck.",
+            body: "DEMO-001 already has the replacement instrument.",
           },
         };
       }
@@ -358,14 +286,9 @@ interface DemoApi {
   state: DemoState;
   evaluation: Evaluation;
   engineSource: EngineSource;
-  flowRunning: boolean;
-  flowStartedAt: number | null;
-  toggleFlow: () => void;
   setRole: (role: RoleId) => void;
   navigate: (partial: { screen?: ScreenId; tab?: WorkspaceTab; caseId?: string }) => void;
   setStep: (step: Step) => void;
-  pitchTo: (index: number) => void;
-  togglePitch: () => void;
   reset: () => void;
   dismissNotice: () => void;
   cosmeticRescan: () => void;
@@ -385,99 +308,17 @@ const DemoContext = createContext<DemoApi | null>(null);
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reduce, undefined, createInitial);
   const [engineSource, setEngineSource] = useState<EngineSource>("local");
-  const [flowRunning, setFlowRunning] = useState(false);
-  const [flowStartedAt, setFlowStartedAt] = useState<number | null>(null);
-  const historyMode = useRef<"push" | "replace">("replace");
-  const skipWrite = useRef(false);
-  const flowDrive = useRef(false);
-  const flowRunningRef = useRef(false);
-  const flowPhaseId = useRef("");
 
   useEffect(() => {
-    if (skipWrite.current) {
-      skipWrite.current = false;
-    } else {
-      writeUrl(state, historyMode.current);
-      historyMode.current = "push";
-    }
+    clearLocationChrome();
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({ cases: state.cases, gatewayOutage: state.gatewayOutage }),
     );
   }, [state]);
-
-  useEffect(() => {
-    const onPop = () => {
-      skipWrite.current = true;
-      dispatch({ type: "apply-url", url: readUrl() });
-    };
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
-
-  useEffect(() => {
-    flowRunningRef.current = flowRunning;
-  }, [flowRunning]);
-
-  useEffect(() => {
-    if (!flowRunning || flowStartedAt == null) return;
-    const startedAt = flowStartedAt;
-    const timer = window.setInterval(() => {
-      const elapsed = Date.now() - startedAt;
-      const phase = phaseAt(elapsed);
-      if (phase.id !== flowPhaseId.current) {
-        flowPhaseId.current = phase.id;
-        flowDrive.current = true;
-        historyMode.current = "replace";
-        dispatch({ type: "flow-go", phase });
-        flowDrive.current = false;
-        if (phase.probeApi) {
-          void evaluateCaseWithFallback(buildDemo001(phase.step)).then((result) => {
-            if (!flowRunningRef.current || flowPhaseId.current !== phase.id) return;
-            const engine =
-              result.source === "api"
-                ? "The API confirmed the same evaluation."
-                : "The in-browser engine answered. The API did not respond in time.";
-            historyMode.current = "replace";
-            dispatch({
-              type: "notify",
-              notice: {
-                tone: "info",
-                title: phase.title,
-                body: `${phase.body} ${engine}`,
-              },
-            });
-          });
-        }
-      }
-      if (elapsed >= FLOW_DURATION_MS) {
-        window.clearInterval(timer);
-        flowRunningRef.current = false;
-        flowPhaseId.current = "";
-        setFlowRunning(false);
-        setFlowStartedAt(null);
-        historyMode.current = "replace";
-        dispatch({
-          type: "notify",
-          notice: {
-            tone: "ok",
-            title: "60s walkthrough complete",
-            body: "The screen stays here. Use the controls for the next step.",
-          },
-        });
-      }
-    }, 200);
-    return () => window.clearInterval(timer);
-  }, [flowRunning, flowStartedAt]);
-
-  useEffect(() => {
-    if (!state.pitchPlaying) return;
-    const timer = window.setTimeout(() => {
-      historyMode.current = "replace";
-      dispatch({ type: "pitch-advance" });
-    }, 6000);
-    return () => window.clearTimeout(timer);
-  }, [state.pitchPlaying, state.pitchIndex]);
 
   useEffect(() => {
     const snapshot = state.cases[state.caseId] ?? state.cases["DEMO-001"];
@@ -491,65 +332,29 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   }, [state.caseId, state.cases]);
 
   const api = useMemo<DemoApi>(() => {
-    const stopFlow = (body: string) => {
-      flowRunningRef.current = false;
-      flowPhaseId.current = "";
-      setFlowRunning(false);
-      setFlowStartedAt(null);
-      dispatch({
-        type: "notify",
-        notice: { tone: "info", title: "Demo flow stopped", body },
-      });
-    };
-    const send = (action: DemoAction, history: "push" | "replace" = "push") => {
-      if (flowRunningRef.current && !flowDrive.current && action.type !== "dismiss-notice") {
-        flowRunningRef.current = false;
-        flowPhaseId.current = "";
-        setFlowRunning(false);
-        setFlowStartedAt(null);
-      }
-      historyMode.current = history;
+    const send = (action: DemoAction) => {
       dispatch(action);
     };
     return {
       state,
       evaluation: evaluateCase(state.cases[state.caseId] ?? state.cases["DEMO-001"]),
       engineSource,
-      flowRunning,
-      flowStartedAt,
-      toggleFlow: () => {
-        if (flowRunningRef.current) {
-          stopFlow("This screen stays under manual control.");
-          return;
-        }
-        const phase = FLOW_PHASES[0];
-        flowPhaseId.current = phase.id;
-        flowRunningRef.current = true;
-        setFlowRunning(true);
-        setFlowStartedAt(Date.now());
-        flowDrive.current = true;
-        historyMode.current = "replace";
-        dispatch({ type: "flow-go", phase });
-        flowDrive.current = false;
-      },
       setRole: (role) => send({ type: "set-role", role }),
       navigate: (partial) => send({ type: "navigate", ...partial }),
       setStep: (step) => send({ type: "set-step", step }),
-      pitchTo: (index) => send({ type: "pitch-to", index }),
-      togglePitch: () => send({ type: "toggle-pitch" }, "replace"),
       reset: () => {
         localStorage.removeItem(STORAGE_KEY);
         send({ type: "reset" });
       },
-      dismissNotice: () => send({ type: "dismiss-notice" }, "replace"),
-      cosmeticRescan: () => send({ type: "cosmetic" }, "replace"),
-      attemptRelease: () => send({ type: "release" }, "replace"),
-      toggleGateway: () => send({ type: "gateway" }, "replace"),
-      recordManualLetter: () => send({ type: "manual-letter" }, "replace"),
-      escalateDemo005: () => send({ type: "escalate" }, "replace"),
-      runStaleHashBlock: () => send({ type: "stale-hash" }, "replace"),
+      dismissNotice: () => send({ type: "dismiss-notice" }),
+      cosmeticRescan: () => send({ type: "cosmetic" }),
+      attemptRelease: () => send({ type: "release" }),
+      toggleGateway: () => send({ type: "gateway" }),
+      recordManualLetter: () => send({ type: "manual-letter" }),
+      escalateDemo005: () => send({ type: "escalate" }),
+      runStaleHashBlock: () => send({ type: "stale-hash" }),
       uploadV2: () => send({ type: "upload-v2" }),
-      toggleVigilance: (caseId) => send({ type: "vigilance", caseId }, "replace"),
+      toggleVigilance: (caseId) => send({ type: "vigilance", caseId }),
       exportJson: () => {
         const snapshot = state.cases[state.caseId];
         void evaluateCaseWithFallback(snapshot).then(({ evaluation, source }) => {
@@ -583,7 +388,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         });
       },
     };
-  }, [engineSource, flowRunning, flowStartedAt, state]);
+  }, [engineSource, state]);
 
   return <DemoContext.Provider value={api}>{children}</DemoContext.Provider>;
 }

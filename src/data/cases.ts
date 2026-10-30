@@ -172,7 +172,7 @@ function demo001Audit(step: Step, v1: InstrumentVersion, v2: InstrumentVersion):
       at: "2026-10-30T09:00:00+05:30",
       actor: "SYSTEM",
       action: "RELEASE_READINESS",
-      detail: "evaluate_case() reports release readiness on V2. Authorisation is still required from DIR-01.",
+      detail: "V2 is ready for a review decision. Authorisation is still required from DIR-01.",
     });
   }
   return sealAudit(events);
@@ -186,7 +186,7 @@ export function buildDemo001(step: Step): CaseSnapshot {
     at: "2026-10-18T11:22:00+05:30",
     reference: "PNB-GW-2026-44190",
     statement:
-      "SAMPLE. Simulated gateway confirmation of FDR/PNB/2024/88421 for ₹30,00,000. Lien marked in favour of AICTE. Coverage is limited to instrument version V1.",
+      "SAMPLE. Bank gateway confirmation of FDR/PNB/2024/88421 for ₹30,00,000. Lien marked in favour of AICTE. Coverage is limited to instrument version V1.",
   });
   const ev202 = bankEvidence({
     id: "EV-BNK-202",
@@ -194,7 +194,7 @@ export function buildDemo001(step: Step): CaseSnapshot {
     at: "2026-10-29T10:18:00+05:30",
     reference: "PNB-GW-2026-44802",
     statement:
-      "SAMPLE. Simulated gateway confirmation of FDR/PNB/2025/91007 for ₹35,00,000. This evidence covers the replacement bank reference on V2 only and does not revive EV-BNK-101.",
+      "SAMPLE. Bank gateway confirmation of FDR/PNB/2025/91007 for ₹35,00,000. This evidence covers the replacement bank reference on V2 only and does not revive EV-BNK-101.",
   });
   return base({
     anchor: v1.fields,
@@ -339,7 +339,7 @@ function buildDemo002(): CaseSnapshot {
       id: "EV-BNK-220",
       at: "2026-08-12T15:00:00+05:30",
       reference: "SBI-GW-2026-22018",
-      statement: "SAMPLE. Simulated gateway confirmation of the refundable performance guarantee. Coverage is V1.",
+      statement: "SAMPLE. Bank gateway confirmation of the refundable performance guarantee. Coverage is V1.",
     },
     released: { at: "2026-09-02T12:00:00+05:30" },
     audit: [
@@ -379,7 +379,7 @@ function buildDemo003(): CaseSnapshot {
       id: "EV-BNK-318",
       at: "2026-10-22T16:40:00+05:30",
       reference: "SBINR52025103000441822",
-      statement: "SAMPLE. Simulated RTGS credit advice matches sanction order SO/AICTE/2025/118 for ₹12,40,000.",
+      statement: "SAMPLE. RTGS credit advice matches sanction order SO/AICTE/2025/118 for ₹12,40,000.",
     },
     audit: [
       { at: "2026-10-20T11:00:00+05:30", actor: "INST-01", action: "CASE_OPENED", detail: "Sanction-order / RTGS case opened." },
@@ -418,7 +418,7 @@ function buildDemo004(): CaseSnapshot {
       id: "EV-BNK-441",
       at: "2026-08-28T13:00:00+05:30",
       reference: "CNRB-GW-2026-55102",
-      statement: "SAMPLE. Simulated gateway confirmation of FDR/CNRB/2024/55102 for ₹5,00,000.",
+      statement: "SAMPLE. Bank gateway confirmation of FDR/CNRB/2024/55102 for ₹5,00,000.",
     },
     vigilanceHold: true,
     vigilanceNote: "Vigilance query on the source of the deposit. Instrument checks are not the hold.",

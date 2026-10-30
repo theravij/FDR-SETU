@@ -33,7 +33,7 @@ export function ReportsScreen() {
   return (
     <ScreenFrame
       title="Workload & Ageing Reports"
-      meta={`Simulation clock 2026-10-30. Open cases: ${open.length}. Mean open ageing: ${open.length ? Math.round(openAge / open.length) : 0} days.`}
+      meta={`As of 2026-10-30. Open cases: ${open.length}. Mean open ageing: ${open.length ? Math.round(openAge / open.length) : 0} days.`}
     >
       <div className="grid gap-3 p-3 lg:grid-cols-3">
         <section className="border border-slate-200 bg-white">

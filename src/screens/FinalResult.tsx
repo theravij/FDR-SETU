@@ -12,11 +12,11 @@ export function FinalResult() {
       <div className="col-span-2 flex min-h-0 flex-col gap-2">
         <article className="border border-slate-200 bg-white px-3 py-2">
           <div className="flex items-center gap-2">
-            <h2 className="text-[13px] font-semibold text-navy">Review decision</h2>
+            <h2 className="text-[13px] font-semibold text-navy">Verification summary</h2>
             <StatusBadge status={evaluation.releaseAuthorised ? "RELEASED" : evaluation.releaseReady ? "READY FOR RELEASE" : evaluation.statusLabel} />
           </div>
           <p className="mt-1 text-[12px] leading-snug text-slate-700">
-            evaluate_case(snapshot, rules, now) is pure. A recorded decision is not the NOC and not the RTGS payment. Those stay with the authorised AICTE process.
+            Recording this decision does not issue the NOC or execute the payment. Those remain with the authorised AICTE process.
           </p>
           <dl className="mt-2 space-y-1 text-[12px]">
             <div className="flex gap-2">
@@ -60,7 +60,7 @@ export function FinalResult() {
             </p>
           ) : null}
           <div className="mt-3">
-            <Btn kind="primary" onClick={attemptRelease}>
+            <Btn kind="primary" data-tour="authorise" onClick={attemptRelease}>
               Authorise release as {state.role}
             </Btn>
           </div>
@@ -75,7 +75,7 @@ export function FinalResult() {
       </div>
       <article className="col-span-3 flex min-h-0 flex-col border border-slate-200 bg-white">
         <header className="border-b border-slate-200 px-3 py-1.5 text-[12px] font-semibold text-navy">
-          evaluate_case(snapshot, rules, now)
+          Verification payload
         </header>
         <pre className="min-h-0 flex-1 overflow-auto p-3 font-mono text-[11px] leading-relaxed text-slate-800">{json}</pre>
       </article>

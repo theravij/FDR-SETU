@@ -5,11 +5,11 @@ import { SUPERSEDED_V1_BADGE } from "../types";
 import { StatusBadge } from "../components/ui";
 
 const STEPS: Array<{ step: Step; label: string }> = [
-  { step: 1, label: "V1 discrepancy" },
-  { step: 2, label: "V1 bank confirmed" },
-  { step: 3, label: "V2 selective recheck" },
-  { step: 4, label: "V2 bank confirmed" },
-  { step: 5, label: "Release readiness" },
+  { step: 1, label: "V1 on file" },
+  { step: 2, label: "V1 confirmed" },
+  { step: 3, label: "V2 uploaded" },
+  { step: 4, label: "V2 confirmed" },
+  { step: 5, label: "Ready for decision" },
 ];
 
 function bucketBorder(bucket: EvaluatedCheck["bucket"]): string {
@@ -99,7 +99,7 @@ export function RecheckMatrix() {
   const snapshot = state.cases[state.caseId];
   const v1 = snapshot.versions.find((item) => item.versionId === "V1");
   const v2 = snapshot.versions.find((item) => item.versionId === "V2");
-  const showDirector = snapshot.caseId === "DEMO-001";
+  const showTimeline = snapshot.caseId === "DEMO-001";
   const acceptedOnV1 = snapshot.reconciliations.find((item) => item.versionId === "V1")?.acceptedAmountInr;
 
   return (
@@ -107,8 +107,7 @@ export function RecheckMatrix() {
       <div className="shrink-0 border border-slate-200 bg-white px-3 py-1.5">
         <p className="text-[12px] font-semibold text-navy">{headline(evaluation)}</p>
         <p className="text-[11px] text-slate-600">
-          A check reopens only when its own inputs change. The file sha256 is not one of those inputs.
-          {showDirector ? " The step rail reloads the canonical DEMO-001 snapshot." : " The five-step director runs on DEMO-001."}
+          A check reopens only when its own inputs change. A new file hash alone does not reopen a check.
         </p>
       </div>
 
@@ -143,7 +142,7 @@ export function RecheckMatrix() {
           </thead>
           <tbody>
             {evaluation.checks.map((check) => (
-              <tr key={check.id} className={`border-l-4 ${bucketBorder(check.bucket)}`}>
+              <tr key={check.id} data-tour={`check-${check.id}`} className={`border-l-4 ${bucketBorder(check.bucket)}`}>
                 <td className="border-b border-slate-100 px-2 py-1 align-top">
                   <p className="font-mono text-[11px] font-semibold text-navy">{check.id}</p>
                   <p className="text-[12px] text-slate-800">{check.title}</p>
@@ -214,7 +213,7 @@ export function RecheckMatrix() {
         </p>
       )}
 
-      {showDirector ? (
+      {showTimeline ? (
         <div className="grid shrink-0 grid-cols-5 gap-1">
           {STEPS.map((item) => {
             const selected = state.step === item.step && state.caseId === "DEMO-001";
@@ -222,14 +221,14 @@ export function RecheckMatrix() {
               <button
                 key={item.step}
                 type="button"
+                data-tour={`step-${item.step}`}
                 onClick={() => setStep(item.step)}
                 aria-pressed={selected}
                 className={`border px-2 py-1 text-left text-[11px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy ${
                   selected ? "border-navy bg-navy text-white" : "border-slate-200 bg-white text-navy hover:bg-slate-50"
                 }`}
               >
-                <span className="block font-semibold">Step {item.step}</span>
-                <span className={selected ? "text-slate-200" : "text-slate-500"}>{item.label}</span>
+                <span className="block font-semibold leading-tight">{item.label}</span>
               </button>
             );
           })}

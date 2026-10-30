@@ -16,23 +16,36 @@ body {
   font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
 }
 
-@keyframes pitch-fill {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
+.tour-target {
+  outline: 1px solid #0f172a;
+  outline-offset: 2px;
 }
 
-.pitch-fill {
-  transform-origin: left center;
-  animation: pitch-fill 6s linear forwards;
+.tour-ripple {
+  position: absolute;
+  left: 1px;
+  top: 1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 1.5px solid #0f172a;
+  animation: tour-ripple 280ms ease-out forwards;
+}
+
+@keyframes tour-ripple {
+  from {
+    transform: scale(0.4);
+    opacity: 0.7;
+  }
+  to {
+    transform: scale(2.6);
+    opacity: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pitch-fill {
+  .tour-ripple {
     animation: none;
-    transform: scaleX(1);
+    opacity: 0;
   }
 }

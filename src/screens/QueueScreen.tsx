@@ -22,7 +22,7 @@ export function QueueScreen() {
   return (
     <ScreenFrame
       title="Officer Queue & Register"
-      meta="Demo policy DEMO-POLICY-6.46: NOC route for FDR and RPGF, sanction-order route for RTGS. Figures are synthetic."
+      meta="NOC route for FDR and RPGF. Sanction-order route for RTGS. Policy DEMO-POLICY-6.46."
       actions={
         <div className="flex gap-1">
           {FILTERS.map((item) => (
@@ -67,6 +67,7 @@ export function QueueScreen() {
               <td className="border-b border-slate-100 px-3 py-2">
                 <div className="flex justify-end gap-1">
                   <Btn
+                    data-tour={`open-${row.caseId}`}
                     onClick={() => navigate({ screen: "workspace", tab: "recheck", caseId: row.caseId })}
                   >
                     Open
