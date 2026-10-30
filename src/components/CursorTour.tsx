@@ -59,6 +59,61 @@ function stopVoiceover(audio: HTMLAudioElement | null): void {
   }
 }
 
+function releasedBadge(): HTMLElement | null {
+  const matches = [...document.querySelectorAll("span")].filter((node) => {
+    if (!node.textContent?.includes("RELEASED")) return false;
+    const box = node.getBoundingClientRect();
+    return box.width > 0 && box.height > 0;
+  });
+  return matches.at(-1) ?? null;
+}
+
+function waitForReleasedBadge(deadlineMs: number, cancelled: () => boolean): Promise<HTMLElement | null> {
+  return new Promise((resolve) => {
+    const tick = () => {
+      if (cancelled() || performance.now() >= deadlineMs) {
+        window.clearInterval(timer);
+        resolve(releasedBadge());
+        return;
+      }
+      const node = releasedBadge();
+      if (node) {
+        window.clearInterval(timer);
+        resolve(node);
+      }
+    };
+    const timer = window.setInterval(tick, 40);
+    tick();
+  });
+}
+
+function idleRest(
+  home: () => Point,
+  deadlineMs: number,
+  apply: (point: Point) => void,
+  cancelled: () => boolean,
+): Promise<void> {
+  return new Promise((resolve) => {
+    const started = performance.now();
+    const tick = () => {
+      if (cancelled() || performance.now() >= deadlineMs) {
+        window.clearInterval(timer);
+        apply(home());
+        resolve();
+        return;
+      }
+      const t = (performance.now() - started) / 1000;
+      const origin = home();
+      apply({
+        x: origin.x + Math.sin(t * 1.35) * 7,
+        y: origin.y + Math.cos(t * 1.05) * 4.5,
+      });
+    };
+    const timer = window.setInterval(tick, 16);
+    tick();
+  });
+}
+
 export function TourController({ children }: { children: ReactNode }) {
   const { reset } = useDemo();
   const [running, setRunning] = useState(false);
@@ -114,7 +169,9 @@ export function TourController({ children }: { children: ReactNode }) {
         if (!el) continue;
         await runClick(el, clickAt);
       }
-      await sleepUntil(startedAt + TOUR_DURATION_MS, () => cancel.current);
+      if (!cancel.current) {
+        await restOnReleased(startedAt + TOUR_DURATION_MS);
+      }
     } finally {
       if (!cancel.current) {
         stopVoiceover(audioRef.current);
@@ -149,6 +206,25 @@ export function TourController({ children }: { children: ReactNode }) {
       /* keep walking even if a target is not clickable */
     }
     setPressing(false);
+  };
+
+  const restOnReleased = async (deadlineMs: number) => {
+    const badge = await waitForReleasedBadge(deadlineMs, () => cancel.current);
+    if (cancel.current) return;
+    const home = () => {
+      if (badge?.isConnected) return centerOf(badge);
+      const fallback = document.querySelector('[data-tour="authorise"]');
+      return fallback instanceof HTMLElement ? centerOf(fallback) : pointRef.current;
+    };
+    if (badge) {
+      clearHover();
+      badge.classList.add("tour-target");
+      hoverEl.current = badge;
+    }
+    const settleMs = Math.max(80, Math.min(420, deadlineMs - performance.now() - 3_200));
+    await animatePoint(pointRef.current, home(), settleMs, setPointBoth, () => cancel.current);
+    if (cancel.current) return;
+    await idleRest(home, deadlineMs, setPointBoth, () => cancel.current);
   };
 
   const toggle = useCallback(() => {
