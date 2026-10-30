@@ -5,6 +5,7 @@ services:
     plan: free
     branch: main
     autoDeployTrigger: commit
-    buildCommand: npm install --include=dev && npm run build
-    startCommand: npm start
+    rootDir: server
+    buildCommand: cd .. && npm install --include=dev && npm run build
+    startCommand: cd .. && npm start
     healthCheckPath: /health
