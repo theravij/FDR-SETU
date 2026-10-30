@@ -4,7 +4,8 @@
     "fdr-setu-backend": {
       "root": ".",
       "buildCommand": "npm run build",
-      "outputDirectory": "dist"
+      "outputDirectory": "dist",
+      "mount": "/"
     }
   }
 }
