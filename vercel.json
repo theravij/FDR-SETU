@@ -2,6 +2,7 @@
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "services": {
     "fdr-setu-backend": {
+      "root": ".",
       "buildCommand": "npm run build",
       "outputDirectory": "dist"
     }
