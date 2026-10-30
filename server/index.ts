@@ -1,18 +1,14 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { evaluateCase } from "../src/engine/evaluateCase";
 import type { CaseSnapshot } from "../src/types";
+import { applyCors } from "./cors";
 
 const port = Number(process.env.PORT) || 3001;
 const host = "0.0.0.0";
 
-function cors(res: ServerResponse): void {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-}
-
-function send(res: ServerResponse, status: number, body: unknown): void {
-  cors(res);
+function send(req: IncomingMessage, res: ServerResponse, status: number, body: unknown): void {
+  applyCors(req, res);
+  res.setHeader("Cache-Control", "no-store");
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(body));
 }
@@ -31,13 +27,13 @@ function readBody(req: IncomingMessage): Promise<string> {
 const server = createServer((req, res) => {
   const url = new URL(req.url ?? "/", "http://127.0.0.1");
   if (req.method === "OPTIONS") {
-    cors(res);
+    applyCors(req, res);
     res.writeHead(204);
     res.end();
     return;
   }
   if (req.method === "GET" && url.pathname === "/health") {
-    send(res, 200, { ok: true, service: "fdr-setu-api" });
+    send(req, res, 200, { ok: true, service: "fdr-setu-api" });
     return;
   }
   if (req.method === "POST" && url.pathname === "/api/evaluate") {
@@ -45,17 +41,17 @@ const server = createServer((req, res) => {
       .then((raw) => {
         const parsed = JSON.parse(raw) as { snapshot?: CaseSnapshot };
         if (!parsed.snapshot || typeof parsed.snapshot.caseId !== "string") {
-          send(res, 400, { error: "snapshot required" });
+          send(req, res, 400, { error: "snapshot required" });
           return;
         }
-        send(res, 200, evaluateCase(parsed.snapshot));
+        send(req, res, 200, evaluateCase(parsed.snapshot));
       })
       .catch(() => {
-        send(res, 400, { error: "invalid JSON" });
+        send(req, res, 400, { error: "invalid JSON" });
       });
     return;
   }
-  send(res, 404, { error: "not found" });
+  send(req, res, 404, { error: "not found" });
 });
 
 server.listen(port, host, () => {

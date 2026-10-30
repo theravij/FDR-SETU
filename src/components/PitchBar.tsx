@@ -1,6 +1,7 @@
 import { Pause, Play } from "lucide-react";
 import { PITCH } from "../data/pitch";
 import { useDemo } from "../state/store";
+import { DemoFlowButton } from "./DemoFlowButton";
 
 export function PitchBar() {
   const { state, pitchTo, togglePitch } = useDemo();
@@ -22,6 +23,7 @@ export function PitchBar() {
           {state.pitchPlaying ? <Pause size={14} aria-hidden /> : <Play size={14} aria-hidden />}
           {state.pitchPlaying ? "Pause" : "Play"}
         </button>
+        <DemoFlowButton />
         <div className="w-36 shrink-0 leading-tight">
           <p className="text-[12px] font-semibold text-navy">30-second Pitch Director</p>
           <p className="text-[10px] text-slate-500">Advances every 6 seconds</p>

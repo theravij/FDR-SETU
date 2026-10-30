@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { buildDemo001, seedCases } from "../data/cases";
+import { FLOW_DURATION_MS, FLOW_PHASES, phaseAt, type FlowPhase } from "../data/demoFlow";
 import { PITCH } from "../data/pitch";
 import {
   applyCosmeticRescan,
@@ -48,6 +49,7 @@ type DemoAction =
   | { type: "pitch-to"; index: number }
   | { type: "pitch-advance" }
   | { type: "toggle-pitch" }
+  | { type: "flow-go"; phase: FlowPhase }
   | { type: "reset" }
   | { type: "cosmetic" }
   | { type: "release" }
@@ -196,6 +198,18 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
     }
     case "toggle-pitch":
       return { ...state, pitchPlaying: !state.pitchPlaying };
+    case "flow-go": {
+      const next = withCanonicalStep(state, action.phase.step, {
+        screen: action.phase.screen,
+        tab: action.phase.tab,
+        role: action.phase.role,
+        pitchPlaying: false,
+      });
+      return {
+        ...next,
+        notice: { tone: "info", title: action.phase.title, body: action.phase.body },
+      };
+    }
     case "reset":
       return fresh(1);
     case "dismiss-notice":
@@ -344,6 +358,9 @@ interface DemoApi {
   state: DemoState;
   evaluation: Evaluation;
   engineSource: EngineSource;
+  flowRunning: boolean;
+  flowStartedAt: number | null;
+  toggleFlow: () => void;
   setRole: (role: RoleId) => void;
   navigate: (partial: { screen?: ScreenId; tab?: WorkspaceTab; caseId?: string }) => void;
   setStep: (step: Step) => void;
@@ -368,8 +385,13 @@ const DemoContext = createContext<DemoApi | null>(null);
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reduce, undefined, createInitial);
   const [engineSource, setEngineSource] = useState<EngineSource>("local");
+  const [flowRunning, setFlowRunning] = useState(false);
+  const [flowStartedAt, setFlowStartedAt] = useState<number | null>(null);
   const historyMode = useRef<"push" | "replace">("replace");
   const skipWrite = useRef(false);
+  const flowDrive = useRef(false);
+  const flowRunningRef = useRef(false);
+  const flowPhaseId = useRef("");
 
   useEffect(() => {
     if (skipWrite.current) {
@@ -394,6 +416,61 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    flowRunningRef.current = flowRunning;
+  }, [flowRunning]);
+
+  useEffect(() => {
+    if (!flowRunning || flowStartedAt == null) return;
+    const startedAt = flowStartedAt;
+    const timer = window.setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const phase = phaseAt(elapsed);
+      if (phase.id !== flowPhaseId.current) {
+        flowPhaseId.current = phase.id;
+        flowDrive.current = true;
+        historyMode.current = "replace";
+        dispatch({ type: "flow-go", phase });
+        flowDrive.current = false;
+        if (phase.probeApi) {
+          void evaluateCaseWithFallback(buildDemo001(phase.step)).then((result) => {
+            if (!flowRunningRef.current || flowPhaseId.current !== phase.id) return;
+            const engine =
+              result.source === "api"
+                ? "The API confirmed the same evaluation."
+                : "The in-browser engine answered. The API did not respond in time.";
+            historyMode.current = "replace";
+            dispatch({
+              type: "notify",
+              notice: {
+                tone: "info",
+                title: phase.title,
+                body: `${phase.body} ${engine}`,
+              },
+            });
+          });
+        }
+      }
+      if (elapsed >= FLOW_DURATION_MS) {
+        window.clearInterval(timer);
+        flowRunningRef.current = false;
+        flowPhaseId.current = "";
+        setFlowRunning(false);
+        setFlowStartedAt(null);
+        historyMode.current = "replace";
+        dispatch({
+          type: "notify",
+          notice: {
+            tone: "ok",
+            title: "60s walkthrough complete",
+            body: "The screen stays here. Use the controls for the next step.",
+          },
+        });
+      }
+    }, 200);
+    return () => window.clearInterval(timer);
+  }, [flowRunning, flowStartedAt]);
+
+  useEffect(() => {
     if (!state.pitchPlaying) return;
     const timer = window.setTimeout(() => {
       historyMode.current = "replace";
@@ -414,7 +491,23 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   }, [state.caseId, state.cases]);
 
   const api = useMemo<DemoApi>(() => {
+    const stopFlow = (body: string) => {
+      flowRunningRef.current = false;
+      flowPhaseId.current = "";
+      setFlowRunning(false);
+      setFlowStartedAt(null);
+      dispatch({
+        type: "notify",
+        notice: { tone: "info", title: "Demo flow stopped", body },
+      });
+    };
     const send = (action: DemoAction, history: "push" | "replace" = "push") => {
+      if (flowRunningRef.current && !flowDrive.current && action.type !== "dismiss-notice") {
+        flowRunningRef.current = false;
+        flowPhaseId.current = "";
+        setFlowRunning(false);
+        setFlowStartedAt(null);
+      }
       historyMode.current = history;
       dispatch(action);
     };
@@ -422,6 +515,23 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       state,
       evaluation: evaluateCase(state.cases[state.caseId] ?? state.cases["DEMO-001"]),
       engineSource,
+      flowRunning,
+      flowStartedAt,
+      toggleFlow: () => {
+        if (flowRunningRef.current) {
+          stopFlow("This screen stays under manual control.");
+          return;
+        }
+        const phase = FLOW_PHASES[0];
+        flowPhaseId.current = phase.id;
+        flowRunningRef.current = true;
+        setFlowRunning(true);
+        setFlowStartedAt(Date.now());
+        flowDrive.current = true;
+        historyMode.current = "replace";
+        dispatch({ type: "flow-go", phase });
+        flowDrive.current = false;
+      },
       setRole: (role) => send({ type: "set-role", role }),
       navigate: (partial) => send({ type: "navigate", ...partial }),
       setStep: (step) => send({ type: "set-step", step }),
@@ -473,7 +583,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         });
       },
     };
-  }, [engineSource, state]);
+  }, [engineSource, flowRunning, flowStartedAt, state]);
 
   return <DemoContext.Provider value={api}>{children}</DemoContext.Provider>;
 }

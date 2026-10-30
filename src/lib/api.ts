@@ -3,6 +3,8 @@ import type { CaseSnapshot, Evaluation } from "../types";
 
 export type EngineSource = "local" | "api";
 
+const API_TIMEOUT_MS = 4500;
+
 export function apiBaseUrl(): string {
   const raw = import.meta.env.VITE_API_BASE_URL;
   if (typeof raw !== "string") return "";
@@ -23,7 +25,7 @@ export async function evaluateCaseWithFallback(
   const base = apiBaseUrl();
   if (!base) return { evaluation: local, source: "local" };
   const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), 4000);
+  const timer = window.setTimeout(() => controller.abort(), API_TIMEOUT_MS);
   try {
     const response = await fetch(`${base}/api/evaluate`, {
       method: "POST",
