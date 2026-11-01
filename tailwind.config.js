@@ -11,6 +11,9 @@ export default {
         sans: ['"IBM Plex Sans"', "Segoe UI", "sans-serif"],
         mono: ['"IBM Plex Mono"', "ui-monospace", "monospace"],
       },
+      boxShadow: {
+        xs: "0 1px 2px 0 rgb(15 23 42 / 0.06)",
+      },
     },
   },
   plugins: [],

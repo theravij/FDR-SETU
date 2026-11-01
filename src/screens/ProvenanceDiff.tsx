@@ -78,7 +78,7 @@ export function ProvenanceDiff() {
                   ) : row.changed ? (
                     <span className="text-slate-600">Non-material</span>
                   ) : (
-                    <span className="text-emerald-800">Unchanged</span>
+                    <span className="text-emerald-800">Locked & unchanged</span>
                   )}
                 </td>
                 <td className="border-b border-slate-100 px-2 py-1.5 text-[12px] text-slate-700">{row.affects}</td>

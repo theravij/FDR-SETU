@@ -98,7 +98,12 @@ export function QueueScreen() {
                 <td className="border-b border-slate-100 px-3 py-2 font-mono text-[12px]">{row.nextActor}</td>
                 <td className="border-b border-slate-100 px-3 py-2">
                   <div className="flex justify-end gap-1">
-                    <Btn onClick={() => navigate({ screen: "workspace", tab: "recheck", caseId: row.caseId })}>Open workspace</Btn>
+                    <Btn
+                      data-demo-target={row.caseId === "DEMO-001" ? "open-DEMO-001" : undefined}
+                      onClick={() => navigate({ screen: "workspace", tab: "recheck", caseId: row.caseId })}
+                    >
+                      Open
+                    </Btn>
                     {row.caseId === "DEMO-004" ? (
                       <Btn
                         kind={row.vigilanceHold ? "secondary" : "danger"}

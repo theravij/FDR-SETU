@@ -3,16 +3,17 @@ import { useDemo } from "../state/store";
 import { Btn, StatusBadge } from "../components/ui";
 
 export function FinalResult() {
-  const { state, evaluation, attemptRelease } = useDemo();
+  const { state, evaluation, attemptRelease, exportJson, exportCsv } = useDemo();
   const snapshot = state.cases[state.caseId];
   const json = JSON.stringify(evaluation, null, 2);
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-5 gap-3 overflow-auto p-3">
       <div className="col-span-2 flex min-h-0 flex-col gap-2">
-        <article className="rounded-xl border border-slate-200/80 bg-white px-3 py-3 shadow-sm">
-          <div className="flex items-center gap-2">
-            <h2 className="text-[13px] font-semibold text-navy">Verification summary</h2>
+        <article className="rounded-xl border-2 border-slate-900 bg-white px-4 py-3 shadow-xs">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">AICTE verification decision</p>
+          <div className="mt-1 flex items-center gap-2">
+            <h2 className="text-[15px] font-semibold text-slate-900">Verification certificate</h2>
             <StatusBadge status={evaluation.releaseAuthorised ? "RELEASED" : evaluation.releaseReady ? "READY FOR RELEASE" : evaluation.statusLabel} />
           </div>
           <p className="mt-1 text-[12px] leading-snug text-slate-700">
@@ -62,11 +63,12 @@ export function FinalResult() {
           <p className="mt-2 inline-flex rounded-md border border-amber-300 bg-amber-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-amber-950">
             financialRelease: {evaluation.financialRelease}
           </p>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             <Btn kind="primary" onClick={attemptRelease}>
               Authorise release as {state.role}
             </Btn>
-            <Btn onClick={() => window.print()}>Print memo</Btn>
+            <Btn onClick={exportJson}>Export JSON</Btn>
+            <Btn onClick={exportCsv}>Export CSV</Btn>
           </div>
         </article>
         {state.notice ? (

@@ -103,7 +103,16 @@ export function RecheckMatrix() {
   const acceptedOnV1 = snapshot.reconciliations.find((item) => item.versionId === "V1")?.acceptedAmountInr;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-3">
+    <div data-demo-target="recheck-matrix" className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-3">
+      <div className="shrink-0 rounded-xl border border-slate-200/80 bg-white px-3 py-2 shadow-xs">
+        <p className="text-[12px] font-semibold text-slate-900">
+          {evaluation.selectiveRecheck.preserved.length} preserved from V1 (locked)
+          <span className="text-slate-300"> · </span>
+          {evaluation.selectiveRecheck.recomputed.length} recomputed on V2
+          <span className="text-slate-300"> · </span>
+          {Math.max(0, evaluation.checks.length - evaluation.selectiveRecheck.preserved.length - evaluation.selectiveRecheck.recomputed.length - evaluation.selectiveRecheck.invalidated.length)} unrelated checks reopened
+        </p>
+      </div>
       <div className="shrink-0 rounded-xl border border-slate-200/80 bg-slate-50 px-3 py-2">
         <p className="text-[12px] font-semibold text-navy">{headline(evaluation)}</p>
         <p className="text-[11px] text-slate-600">

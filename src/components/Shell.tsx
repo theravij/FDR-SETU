@@ -5,6 +5,7 @@ import { InstitutionScreen } from "../screens/InstitutionScreen";
 import { QueueScreen } from "../screens/QueueScreen";
 import { ReportsScreen } from "../screens/ReportsScreen";
 import { WorkspaceScreen } from "../screens/WorkspaceScreen";
+import { DemoDirector } from "./DemoDirector";
 import { Sidebar } from "./Sidebar";
 
 function NoticeBar() {
@@ -43,6 +44,7 @@ function NoticeBar() {
 export function Shell() {
   const { state } = useDemo();
   return (
+    <DemoDirector>
     <div className="h-screen w-screen overflow-hidden flex flex-col bg-slate-50 text-slate-900">
       <div className="flex min-h-0 flex-1">
         <Sidebar />
@@ -56,5 +58,6 @@ export function Shell() {
         </main>
       </div>
     </div>
+    </DemoDirector>
   );
 }

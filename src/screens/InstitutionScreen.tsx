@@ -47,12 +47,13 @@ export function InstitutionScreen() {
             {state.role === "INST-01" ? (
               <Btn
                 kind="primary"
+                data-demo-target="submit-v2"
                 onClick={() => {
                   uploadV2();
                   navigate({ screen: "workspace", tab: "recheck", caseId: "DEMO-001" });
                 }}
               >
-                {already ? "Open selective recheck" : "Submit corrected V2 instrument"}
+                {already ? "Open selective recheck" : "Submit Corrected V2 FDR (₹35,00,000)"}
               </Btn>
             ) : (
               <Btn kind="primary" onClick={() => setRole("INST-01")}>
