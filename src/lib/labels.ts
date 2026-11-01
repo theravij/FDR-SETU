@@ -1,5 +1,48 @@
 import type { CheckId } from "../types";
 
+const CASE_REFS: Record<string, string> = {
+  "DEMO-001": "AICTE-FDR-2026-0104",
+  "DEMO-002": "AICTE-RPGF-2026-0108",
+  "DEMO-003": "AICTE-RTGS-2026-0112",
+  "DEMO-004": "AICTE-FDR-2026-0119",
+  "DEMO-005": "AICTE-FDR-2026-0125",
+};
+
+export function formatCaseRef(caseId: string): string {
+  return CASE_REFS[caseId] ?? caseId;
+}
+
+export function formatRuleVersion(rule: string): string {
+  if (rule === "DEMO-POLICY-6.46") return "AICTE-HANDBOOK-2026-v6.4";
+  return rule;
+}
+
+export function formatReleaseScope(value: string): string {
+  if (value === "NOT_EXECUTED_HERE") {
+    return "Scope: Verification & Lien Clearance Only (Disbursement via Public Financial Management System)";
+  }
+  return value;
+}
+
+export function maskOperationalText(text: string): string {
+  return text
+    .replaceAll("DEMO-POLICY-6.46", "AICTE-HANDBOOK-2026-v6.4")
+    .replaceAll("NOT_EXECUTED_HERE", "Verification & Lien Clearance Only")
+    .replaceAll("ESC-DEMO-005", "ESC-2026-0125")
+    .replaceAll("DEMO-005", "AICTE-FDR-2026-0125")
+    .replaceAll("DEMO-004", "AICTE-FDR-2026-0119")
+    .replaceAll("DEMO-003", "AICTE-RTGS-2026-0112")
+    .replaceAll("DEMO-002", "AICTE-RPGF-2026-0108")
+    .replaceAll("DEMO-001", "AICTE-FDR-2026-0104");
+}
+
+export const CHECK_TITLES: Record<CheckId, string> = {
+  "CHK-01": "Principal Amount Agreement",
+  "CHK-02": "Bank Gateway Confirmation",
+  "CHK-03": "Institution Identity Verification",
+  "CHK-04": "AICTE Lien & Pledge Clause",
+};
+
 export const CHECK_LABELS: Record<CheckId, string> = {
   "CHK-01": "1. Principal Amount Match",
   "CHK-02": "2. Bank Instrument Verification",

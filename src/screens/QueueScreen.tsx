@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { registerRows } from "../engine/register";
 import { formatInr } from "../lib/format";
+import { formatCaseRef } from "../lib/labels";
 import { useDemo } from "../state/store";
 import { Btn, ScreenFrame, StatusBadge } from "../components/ui";
 
@@ -22,7 +23,7 @@ export function QueueScreen() {
     return true;
   }).filter((row) => {
     if (!needle) return true;
-    return [row.caseId, row.institutionName, row.routeLabel].some((value) => value.toLowerCase().includes(needle));
+    return [row.caseId, formatCaseRef(row.caseId), row.institutionName, row.routeLabel].some((value) => value.toLowerCase().includes(needle));
   });
   const open = rows.filter((row) => row.statusLabel !== "RELEASED");
   const actionRequired = rows.filter((row) => row.statusLabel === "DISCREPANCY" || row.statusLabel === "RECHECK REQUIRED").length;
@@ -55,6 +56,7 @@ export function QueueScreen() {
             key={item}
             type="button"
             aria-pressed={filter === item}
+            data-demo-target={item === "Discrepancy" ? "filter-discrepancy" : item === "All" ? "filter-all" : undefined}
             onClick={() => setFilter(item)}
             className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
               filter === item ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
@@ -77,8 +79,8 @@ export function QueueScreen() {
           </thead>
           <tbody>
             {visible.map((row) => (
-              <tr key={row.caseId} className="hover:bg-slate-50">
-                <td className="border-b border-slate-100 px-3 py-2 font-mono text-[12px] font-semibold text-slate-900">{row.caseId}</td>
+              <tr key={row.caseId} data-demo-target={row.caseId === "DEMO-004" ? "row-hold" : undefined} className="hover:bg-slate-50">
+                <td className="border-b border-slate-100 px-3 py-2 font-mono text-[12px] font-semibold text-slate-900">{formatCaseRef(row.caseId)}</td>
                 <td className="border-b border-slate-100 px-3 py-2 text-[12px]">{row.institutionName}</td>
                 <td className="border-b border-slate-100 px-3 py-2 text-[12px] text-slate-600">{row.routeLabel}</td>
                 <td className="border-b border-slate-100 px-3 py-2">
@@ -109,10 +111,10 @@ export function QueueScreen() {
                         kind={row.vigilanceHold ? "secondary" : "danger"}
                         onClick={() => {
                           if (state.role !== "VIG-22") setRole("VIG-22");
-                          else toggleVigilance(row.caseId);
+                          toggleVigilance(row.caseId);
                         }}
                       >
-                        {state.role === "VIG-22" ? (row.vigilanceHold ? "Lift hold" : "Place hold") : "Switch to VIG-22"}
+                        {row.vigilanceHold ? "Lift hold" : "Place hold"}
                       </Btn>
                     ) : null}
                   </div>

@@ -25,7 +25,7 @@ export function shortHash(hash: string, size = 12): string {
 export function routeLabel(route: RouteKind): string {
   switch (route) {
     case "NOC_FDR":
-      return "NOC Route · FDR";
+      return "NOC Route · Fixed Deposit";
     case "NOC_RPGF":
       return "NOC Route · RPGF";
     case "SANCTION_RTGS":

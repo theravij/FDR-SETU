@@ -1,10 +1,8 @@
 import { BarChart3, Download, GitCompare, Landmark, List, Scale } from "lucide-react";
 import type { ReactNode } from "react";
 import { ROLES } from "../engine/permissions";
-import { registerRows } from "../engine/register";
 import { useDemo } from "../state/store";
 import type { RoleId, ScreenId } from "../types";
-import { useDemoRun } from "./DemoDirector";
 
 const NAV: Array<{ id: ScreenId; label: string; hint: string; icon: ReactNode }> = [
   { id: "workspace", label: "Case Workspace", hint: "Current file", icon: <Scale size={15} aria-hidden /> },
@@ -16,16 +14,6 @@ const NAV: Array<{ id: ScreenId; label: string; hint: string; icon: ReactNode }>
 
 export function Sidebar() {
   const { state, navigate, setRole, exportJson, exportCsv, reset, evaluation } = useDemo();
-  const run = useDemoRun();
-  const rows = registerRows(Object.values(state.cases));
-  const open = rows.filter((row) => row.statusLabel !== "RELEASED").length;
-  const counts: Record<ScreenId, number> = {
-    workspace: 1,
-    queue: rows.length,
-    institution: state.cases["DEMO-001"]?.currentVersionId === "V2" ? 0 : 1,
-    reports: open,
-    baseline: 2,
-  };
 
   return (
     <aside className="flex w-[268px] min-h-0 shrink-0 flex-col overflow-hidden border-r border-slate-800 bg-slate-950 text-slate-100">
@@ -64,33 +52,12 @@ export function Sidebar() {
                 <span className="block text-[13px] font-medium leading-tight">{item.label}</span>
                 <span className={`block text-[11px] ${active ? "text-indigo-200/70" : "text-slate-500"}`}>{item.hint}</span>
               </span>
-              <span className={`rounded-md px-1.5 font-mono text-[10px] tabular-nums ${active ? "bg-indigo-400/20 text-indigo-200" : "bg-white/5 text-slate-400"}`}>
-                {counts[item.id]}
-              </span>
             </button>
           );
         })}
       </nav>
 
       <div className="border-t border-slate-800 px-3 py-3">
-        <div className="mb-3 grid grid-cols-2 gap-1.5">
-          <button
-            type="button"
-            onClick={run.play}
-            disabled={run.playing}
-            className="rounded-lg border border-indigo-400/30 bg-indigo-500/15 px-2 py-1.5 text-[11px] font-medium text-indigo-200 disabled:opacity-50"
-          >
-            60s Demo
-          </button>
-          <button
-            type="button"
-            onClick={run.record}
-            disabled={run.playing}
-            className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-[11px] font-medium text-slate-100 disabled:opacity-50"
-          >
-            Record 60s
-          </button>
-        </div>
         <p className="px-1 pb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Acting as</p>
         <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="Role">
           {ROLES.map((item) => {
@@ -111,32 +78,20 @@ export function Sidebar() {
                   <span className="font-mono text-[11px] font-semibold">{item.id}</span>
                   {pending ? <span className="h-1.5 w-1.5 rounded-full bg-amber-400" title="Action waiting" /> : null}
                 </span>
-                <span className="block text-[10px] leading-tight text-slate-400">{item.title}</span>
               </button>
             );
           })}
         </div>
-        <p className="px-1 pt-2 text-[10px] leading-snug text-slate-400">
-          {ROLES.find((item) => item.id === state.role)?.summary}
-        </p>
-        <div className="mt-3 grid grid-cols-2 gap-1.5">
-          <button
-            type="button"
-            onClick={exportJson}
-            className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-[11px] font-medium text-slate-100 hover:bg-white/10"
-          >
-            <Download size={12} aria-hidden /> JSON
+        <div className="mt-3 flex items-center justify-between px-1 text-[11px]">
+          <button type="button" onClick={exportJson} className="inline-flex items-center gap-1 text-slate-300 hover:text-white">
+            <Download size={11} aria-hidden /> Export JSON
           </button>
-          <button
-            type="button"
-            onClick={exportCsv}
-            className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-[11px] font-medium text-slate-100 hover:bg-white/10"
-          >
-            <Download size={12} aria-hidden /> CSV
+          <button type="button" onClick={exportCsv} className="inline-flex items-center gap-1 text-slate-300 hover:text-white">
+            <Download size={11} aria-hidden /> Export CSV
           </button>
         </div>
         <button type="button" onClick={reset} className="mt-2 w-full text-center text-[11px] text-slate-500 hover:text-slate-200">
-          Reset workspace
+          Reset
         </button>
       </div>
     </aside>

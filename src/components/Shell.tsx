@@ -5,6 +5,7 @@ import { InstitutionScreen } from "../screens/InstitutionScreen";
 import { QueueScreen } from "../screens/QueueScreen";
 import { ReportsScreen } from "../screens/ReportsScreen";
 import { WorkspaceScreen } from "../screens/WorkspaceScreen";
+import { maskOperationalText } from "../lib/labels";
 import { DemoDirector } from "./DemoDirector";
 import { Sidebar } from "./Sidebar";
 
@@ -25,9 +26,9 @@ function NoticeBar() {
       <p className="min-w-0 leading-snug">
         <span className="font-semibold">
           {notice.http ? `HTTP ${notice.http} · ` : ""}
-          {notice.title}.
+          {maskOperationalText(notice.title)}.
         </span>{" "}
-        <span className="line-clamp-2">{notice.body}</span>
+        <span className="line-clamp-2">{maskOperationalText(notice.body)}</span>
       </p>
       <button
         type="button"

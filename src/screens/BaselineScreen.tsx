@@ -1,6 +1,7 @@
 import { buildDemo001 } from "../data/cases";
 import { evaluateCase } from "../engine/evaluateCase";
 import { statusText } from "../lib/format";
+import { CHECK_TITLES } from "../lib/labels";
 import { ScreenFrame } from "../components/ui";
 import type { CheckId, CheckStatus } from "../types";
 
@@ -13,18 +14,18 @@ export function BaselineScreen() {
     const baseline: CheckStatus = "RECHECK_REQUIRED";
     return {
       id: check.id as CheckId,
-      title: check.title,
+      title: CHECK_TITLES[check.id],
       baseline,
       selective: check.status,
     };
   });
   const baselineOpen = rows.length;
-  const selectiveOpen = selective.selectiveRecheck.invalidated.length;
+  const selectiveOpen = selective.selectiveRecheck.invalidated.length + selective.selectiveRecheck.recomputed.length;
 
   return (
     <ScreenFrame
       title="Baseline Comparison"
-      meta="Canonical DEMO-001 at the moment V2 is uploaded. Baseline reopens every check. FDR Setu reopens only CHK-02."
+      meta="National Institute of Technical Studies at the moment the replacement instrument is uploaded. A full recheck reopens every check. Selective recheck reopens only the changed bank confirmation."
     >
       <div className="mb-3 grid grid-cols-3 gap-3">
         <article className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
@@ -40,7 +41,7 @@ export function BaselineScreen() {
           <p className="mt-1 font-mono text-[18px] font-semibold tabular-nums text-indigo-950">{(baselineOpen - selectiveOpen) * MINUTES}</p>
         </article>
       </div>
-      <div className="grid grid-cols-5 gap-3">
+      <div data-demo-target="baseline-compare" className="grid grid-cols-5 gap-3">
         <section className="col-span-3 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
           <table className="w-full text-left">
             <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">

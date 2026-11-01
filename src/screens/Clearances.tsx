@@ -1,3 +1,4 @@
+import { maskOperationalText } from "../lib/labels";
 import { useDemo } from "../state/store";
 import { Btn } from "../components/ui";
 
@@ -27,11 +28,11 @@ export function Clearances() {
       onClick: state.gatewayOutage ? demo.recordManualLetter : demo.toggleGateway,
     },
     {
-      title: "Idempotent escalation · DEMO-005",
+      title: `Idempotent escalation · ${maskOperationalText("DEMO-005")}`,
       copy: demo005.escalation
-        ? `${demo005.escalation.id} is already open. A second request must return that id and must not add an audit event.`
-        : "DEMO-005 has an open amount discrepancy and no escalation. The first request opens ESC-DEMO-005. The second returns the same id.",
-      action: demo005.escalation ? "Repeat escalation" : "Escalate DEMO-005",
+        ? `${maskOperationalText(demo005.escalation.id)} is already open. A second request must return that id and must not add an audit event.`
+        : `${maskOperationalText("DEMO-005")} has an open amount discrepancy and no escalation. The first request opens ${maskOperationalText("ESC-DEMO-005")}. The second returns the same id.`,
+      action: demo005.escalation ? "Repeat escalation" : `Escalate ${maskOperationalText("DEMO-005")}`,
       onClick: demo.escalateDemo005,
     },
     {
@@ -89,10 +90,10 @@ export function Clearances() {
       ))}
       </div>
       {state.notice ? (
-        <pre className="max-h-24 shrink-0 overflow-auto border border-slate-200 bg-white px-3 py-2 font-mono text-[11px] leading-snug text-slate-800 whitespace-pre-wrap">
-          {state.notice.title}: {state.notice.body}
-          {state.frozenHash ? ` Frozen hash ${state.frozenHash}.` : ""}
-        </pre>
+        <p className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] leading-snug text-slate-800">
+          <span className="font-semibold">{maskOperationalText(state.notice.title)}.</span> {maskOperationalText(state.notice.body)}
+          {state.frozenHash ? ` Frozen hash ${state.frozenHash.slice(0, 18)}.` : ""}
+        </p>
       ) : null}
     </div>
   );

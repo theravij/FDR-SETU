@@ -1,4 +1,5 @@
 import { provenanceDiff, valueLayers } from "../engine/provenance";
+import { maskOperationalText } from "../lib/labels";
 import { useDemo } from "../state/store";
 
 const TIERS = [
@@ -42,10 +43,10 @@ export function ProvenanceDiff() {
             {layers.map((row) => (
               <tr key={row.field}>
                 <td className="border-b border-slate-100 px-2 py-1.5 text-[12px] font-medium text-navy">{row.field}</td>
-                <td className="border-b border-slate-100 px-2 py-1.5 text-[12px]">{row.institutionEntered}</td>
-                <td className="border-b border-slate-100 px-2 py-1.5 text-[12px]">{row.ocrSuggestion}</td>
-                <td className="border-b border-slate-100 px-2 py-1.5 text-[12px]">{row.reviewerCorrected}</td>
-                <td className="border-b border-slate-100 px-2 py-1.5 text-[12px]">{row.independentlyConfirmed}</td>
+                <td className="border-b border-slate-100 px-2 py-1.5 text-[12px]">{maskOperationalText(row.institutionEntered)}</td>
+                <td className="border-b border-slate-100 px-2 py-1.5 text-[12px]">{maskOperationalText(row.ocrSuggestion)}</td>
+                <td className="border-b border-slate-100 px-2 py-1.5 text-[12px]">{maskOperationalText(row.reviewerCorrected)}</td>
+                <td className="border-b border-slate-100 px-2 py-1.5 text-[12px]">{maskOperationalText(row.independentlyConfirmed)}</td>
               </tr>
             ))}
           </tbody>
@@ -68,8 +69,8 @@ export function ProvenanceDiff() {
               <tr key={row.field} className={row.material ? "bg-amber-50" : row.changed ? "bg-slate-50" : "bg-emerald-50/40"}>
                 <td className="border-b border-slate-100 px-2 py-1.5 text-[12px] font-medium text-navy">{row.field}</td>
                 <td className="border-b border-slate-100 px-2 py-1.5 text-[12px] text-slate-700">{row.tier}</td>
-                <td className="border-b border-slate-100 px-2 py-1.5 font-mono text-[11px] text-slate-800">{row.v1}</td>
-                <td className="border-b border-slate-100 px-2 py-1.5 font-mono text-[11px] text-slate-800">{row.v2}</td>
+                <td className="border-b border-slate-100 px-2 py-1.5 font-mono text-[11px] text-slate-800">{maskOperationalText(row.v1)}</td>
+                <td className="border-b border-slate-100 px-2 py-1.5 font-mono text-[11px] text-slate-800">{maskOperationalText(row.v2)}</td>
                 <td className="border-b border-slate-100 px-2 py-1.5 text-[11px] font-semibold">
                   {!hasV2 ? (
                     <span className="text-slate-400">No V2</span>
