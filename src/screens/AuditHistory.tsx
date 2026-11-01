@@ -7,43 +7,36 @@ export function AuditHistory() {
   const { state } = useDemo();
   const snapshot = state.cases[state.caseId];
   const intact = verifyAuditChain(snapshot.audit);
+  const events = [...snapshot.audit].reverse();
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col p-3">
-      <div className="mb-2 flex shrink-0 items-center gap-2">
+    <div className="flex min-h-0 flex-1 flex-col overflow-auto p-4">
+      <div className="mb-3 flex shrink-0 items-center gap-2">
         <StatusBadge status={intact ? "CONFIRMED" : "DISCREPANCY"} />
-        <p className="text-[12px] text-slate-700">
+        <p className="text-[12px] text-slate-600">
           {intact
-            ? "Chain intact. Each event hash commits the previous hash. The ledger is append-only."
+            ? "Chain intact. Newest event first. Each hash still commits the previous hash."
             : "Chain failed verification."}
         </p>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto border border-slate-200 bg-white">
-        <table className="w-full border-collapse text-left">
-          <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="border-b border-slate-200 px-2 py-1.5 font-semibold">When</th>
-              <th className="border-b border-slate-200 px-2 py-1.5 font-semibold">Actor</th>
-              <th className="border-b border-slate-200 px-2 py-1.5 font-semibold">Action</th>
-              <th className="border-b border-slate-200 px-2 py-1.5 font-semibold">Detail</th>
-              <th className="border-b border-slate-200 px-2 py-1.5 font-semibold">Event hash</th>
-            </tr>
-          </thead>
-          <tbody>
-            {snapshot.audit.map((event) => (
-              <tr key={event.hash}>
-                <td className="whitespace-nowrap border-b border-slate-100 px-2 py-1.5 font-mono text-[11px] text-slate-700">{event.at}</td>
-                <td className="border-b border-slate-100 px-2 py-1.5 text-[12px] font-medium text-navy">{event.actor}</td>
-                <td className="border-b border-slate-100 px-2 py-1.5 font-mono text-[11px] text-slate-800">{event.action}</td>
-                <td className="border-b border-slate-100 px-2 py-1.5 text-[12px] leading-snug text-slate-700">{event.detail}</td>
-                <td className="border-b border-slate-100 px-2 py-1.5 font-mono text-[11px] text-slate-600" title={`${event.prevHash} → ${event.hash}`}>
-                  {shortHash(event.hash, 14)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ol className="relative space-y-3 border-l border-slate-200 pl-4">
+        {events.map((event) => (
+          <li key={event.hash} className="relative">
+            <span className="absolute -left-[21px] top-3 h-2.5 w-2.5 rounded-full border-2 border-white bg-indigo-500" />
+            <article className="rounded-xl border border-slate-200/80 bg-white px-3 py-2 shadow-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-md bg-slate-900 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-white">{event.actor}</span>
+                <span className="font-mono text-[11px] text-slate-800">{event.action}</span>
+                <span className="ml-auto font-mono text-[10px] tabular-nums text-slate-500">{event.at}</span>
+              </div>
+              <p className="mt-1 text-[12px] leading-snug text-slate-700">{event.detail}</p>
+              <p className="mt-1 font-mono text-[10px] text-slate-400" title={`${event.prevHash} → ${event.hash}`}>
+                {shortHash(event.hash, 18)}
+              </p>
+            </article>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

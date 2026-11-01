@@ -42,11 +42,42 @@ export function Clearances() {
     },
   ];
 
+  const snapshot = state.cases[state.caseId];
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-3">
+      <div className="grid shrink-0 grid-cols-3 gap-2">
+        <article className="rounded-xl border border-slate-200/80 bg-white px-3 py-2 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Bank confirmation</p>
+          <p className="text-[13px] font-semibold text-slate-900">{snapshot.bankEvidence.length} item{snapshot.bankEvidence.length === 1 ? "" : "s"} on file</p>
+        </article>
+        <article className="rounded-xl border border-slate-200/80 bg-white px-3 py-2 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Clauses</p>
+          <p className="text-[13px] font-semibold text-slate-900">
+            Identity {snapshot.identityConfirmed ? "locked" : "open"} · lien {snapshot.lienConfirmed ? "locked" : "open"}
+          </p>
+        </article>
+        <article className="rounded-xl border border-slate-200/80 bg-white px-3 py-2 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Vigilance</p>
+          <p className="text-[13px] font-semibold text-slate-900">{snapshot.vigilanceHold ? "Hold standing" : "No hold"}</p>
+          {state.caseId === "DEMO-004" ? (
+            <div className="mt-2">
+              <Btn
+                kind={snapshot.vigilanceHold ? "secondary" : "danger"}
+                onClick={() => {
+                  if (state.role !== "VIG-22") demo.setRole("VIG-22");
+                  else demo.toggleVigilance(snapshot.caseId);
+                }}
+              >
+                {state.role === "VIG-22" ? (snapshot.vigilanceHold ? "Lift hold" : "Place hold") : "Switch to VIG-22"}
+              </Btn>
+            </div>
+          ) : null}
+        </article>
+      </div>
       <div className="grid min-h-0 flex-1 grid-cols-5 gap-2">
       {tests.map((test) => (
-        <article key={test.title} className="flex min-h-0 flex-col border border-slate-200 bg-white">
+        <article key={test.title} className="flex min-h-0 flex-col rounded-xl border border-slate-200/80 bg-white shadow-sm">
           <header className="border-b border-slate-200 px-2.5 py-2">
             <h2 className="text-[12px] font-semibold leading-tight text-navy">{test.title}</h2>
           </header>

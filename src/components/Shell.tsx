@@ -5,7 +5,6 @@ import { InstitutionScreen } from "../screens/InstitutionScreen";
 import { QueueScreen } from "../screens/QueueScreen";
 import { ReportsScreen } from "../screens/ReportsScreen";
 import { WorkspaceScreen } from "../screens/WorkspaceScreen";
-import { TourController } from "./CursorTour";
 import { Sidebar } from "./Sidebar";
 
 function NoticeBar() {
@@ -21,9 +20,12 @@ function NoticeBar() {
           ? "border-amber-200 bg-amber-50 text-amber-950"
           : "border-slate-200 bg-white text-slate-800";
   return (
-    <div className={`flex shrink-0 items-start gap-3 border-b px-4 py-1.5 text-[12px] ${tone}`}>
+    <div className={`mx-5 mt-3 flex shrink-0 items-start gap-3 rounded-xl border px-4 py-2 text-[12px] shadow-sm ${tone}`}>
       <p className="min-w-0 leading-snug">
-        <span className="font-semibold">{notice.title}.</span>{" "}
+        <span className="font-semibold">
+          {notice.http ? `HTTP ${notice.http} · ` : ""}
+          {notice.title}.
+        </span>{" "}
         <span className="line-clamp-2">{notice.body}</span>
       </p>
       <button
@@ -41,20 +43,18 @@ function NoticeBar() {
 export function Shell() {
   const { state } = useDemo();
   return (
-    <TourController>
-      <div className="h-screen w-screen overflow-hidden flex flex-col">
-        <div className="flex min-h-0 flex-1">
-          <Sidebar />
-          <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <NoticeBar />
-            {state.screen === "workspace" ? <WorkspaceScreen /> : null}
-            {state.screen === "queue" ? <QueueScreen /> : null}
-            {state.screen === "institution" ? <InstitutionScreen /> : null}
-            {state.screen === "reports" ? <ReportsScreen /> : null}
-            {state.screen === "baseline" ? <BaselineScreen /> : null}
-          </main>
-        </div>
+    <div className="h-screen w-screen overflow-hidden flex flex-col bg-slate-50 text-slate-900">
+      <div className="flex min-h-0 flex-1">
+        <Sidebar />
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-slate-50 text-slate-900">
+          <NoticeBar />
+          {state.screen === "workspace" ? <WorkspaceScreen /> : null}
+          {state.screen === "queue" ? <QueueScreen /> : null}
+          {state.screen === "institution" ? <InstitutionScreen /> : null}
+          {state.screen === "reports" ? <ReportsScreen /> : null}
+          {state.screen === "baseline" ? <BaselineScreen /> : null}
+        </main>
       </div>
-    </TourController>
+    </div>
   );
 }

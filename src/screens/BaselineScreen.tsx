@@ -26,8 +26,22 @@ export function BaselineScreen() {
       title="Baseline Comparison"
       meta="Canonical DEMO-001 at the moment V2 is uploaded. Baseline reopens every check. FDR Setu reopens only CHK-02."
     >
-      <div className="grid h-full grid-cols-5 gap-3 p-3">
-        <section className="col-span-3 border border-slate-200 bg-white">
+      <div className="mb-3 grid grid-cols-3 gap-3">
+        <article className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Checks reopened</p>
+          <p className="mt-1 font-mono text-[18px] font-semibold tabular-nums text-slate-900">{selectiveOpen} <span className="text-[12px] font-medium text-slate-500">of {baselineOpen}</span></p>
+        </article>
+        <article className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800">Confirmations kept</p>
+          <p className="mt-1 font-mono text-[18px] font-semibold tabular-nums text-emerald-950">{selective.selectiveRecheck.preserved.length}</p>
+        </article>
+        <article className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-800">Officer minutes saved</p>
+          <p className="mt-1 font-mono text-[18px] font-semibold tabular-nums text-indigo-950">{(baselineOpen - selectiveOpen) * MINUTES}</p>
+        </article>
+      </div>
+      <div className="grid grid-cols-5 gap-3">
+        <section className="col-span-3 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
           <table className="w-full text-left">
             <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
               <tr>
@@ -52,7 +66,7 @@ export function BaselineScreen() {
             </tbody>
           </table>
         </section>
-        <section className="col-span-2 border border-slate-200 bg-white p-3">
+        <section className="col-span-2 rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
           <h2 className="text-[13px] font-semibold text-navy">What the officer must redo</h2>
           <dl className="mt-3 space-y-2 text-[12px]">
             <div className="flex justify-between border-b border-slate-100 pb-2">

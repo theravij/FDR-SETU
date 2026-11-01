@@ -8,9 +8,9 @@ export function FinalResult() {
   const json = JSON.stringify(evaluation, null, 2);
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-5 gap-3 p-3">
+    <div className="grid min-h-0 flex-1 grid-cols-5 gap-3 overflow-auto p-3">
       <div className="col-span-2 flex min-h-0 flex-col gap-2">
-        <article className="border border-slate-200 bg-white px-3 py-2">
+        <article className="rounded-xl border border-slate-200/80 bg-white px-3 py-3 shadow-sm">
           <div className="flex items-center gap-2">
             <h2 className="text-[13px] font-semibold text-navy">Verification summary</h2>
             <StatusBadge status={evaluation.releaseAuthorised ? "RELEASED" : evaluation.releaseReady ? "READY FOR RELEASE" : evaluation.statusLabel} />
@@ -59,10 +59,14 @@ export function FinalResult() {
               Authorised by {snapshot.release.by} at {snapshot.release.at}. Hash {shortHash(snapshot.release.evaluationHash ?? "", 16)}.
             </p>
           ) : null}
-          <div className="mt-3">
-            <Btn kind="primary" data-tour="authorise" onClick={attemptRelease}>
+          <p className="mt-2 inline-flex rounded-md border border-amber-300 bg-amber-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-amber-950">
+            financialRelease: {evaluation.financialRelease}
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Btn kind="primary" onClick={attemptRelease}>
               Authorise release as {state.role}
             </Btn>
+            <Btn onClick={() => window.print()}>Print memo</Btn>
           </div>
         </article>
         {state.notice ? (
@@ -73,7 +77,7 @@ export function FinalResult() {
           </pre>
         ) : null}
       </div>
-      <article className="col-span-3 flex min-h-0 flex-col border border-slate-200 bg-white">
+      <article className="col-span-3 flex min-h-0 flex-col rounded-xl border border-slate-200/80 bg-white shadow-sm">
         <header className="border-b border-slate-200 px-3 py-1.5 text-[12px] font-semibold text-navy">
           Verification payload
         </header>

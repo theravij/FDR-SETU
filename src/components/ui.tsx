@@ -20,7 +20,7 @@ const STATUS_CLASS: Record<string, string> = {
 export function StatusBadge({ status }: { status: CheckStatus | string }) {
   return (
     <span
-      className={`inline-flex items-center whitespace-nowrap border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${STATUS_CLASS[status] ?? "border-slate-200 bg-slate-50 text-slate-700"}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${STATUS_CLASS[status] ?? "border-slate-200 bg-slate-50 text-slate-700"}`}
     >
       {displayStatus(status)}
     </span>
@@ -42,7 +42,7 @@ export function Btn({
   return (
     <button
       type="button"
-      className={`inline-flex items-center gap-1.5 border px-2.5 py-1 text-[12px] font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy disabled:cursor-not-allowed disabled:opacity-50 ${tone} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] font-medium shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy disabled:cursor-not-allowed disabled:opacity-50 ${tone} ${className}`}
       {...props}
     >
       {children}
@@ -62,15 +62,15 @@ export function ScreenFrame({
   children: ReactNode;
 }) {
   return (
-    <section className="flex min-h-0 flex-1 flex-col">
-      <header className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 py-2">
+    <section className="flex min-h-0 flex-1 flex-col bg-slate-50 text-slate-900">
+      <header className="flex shrink-0 items-center gap-3 px-5 py-4">
         <div className="min-w-0">
-          <h1 className="truncate text-sm font-semibold text-navy">{title}</h1>
-          {meta ? <p className="truncate text-[11px] text-slate-500">{meta}</p> : null}
+          <h1 className="truncate text-base font-semibold text-slate-900">{title}</h1>
+          {meta ? <p className="truncate text-[12px] text-slate-500">{meta}</p> : null}
         </div>
         {actions ? <div className="ml-auto flex shrink-0 items-center gap-2">{actions}</div> : null}
       </header>
-      <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+      <div className="min-h-0 flex-1 overflow-auto px-5 pb-5">{children}</div>
     </section>
   );
 }

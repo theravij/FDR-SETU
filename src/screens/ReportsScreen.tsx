@@ -32,11 +32,11 @@ export function ReportsScreen() {
 
   return (
     <ScreenFrame
-      title="Workload Summary"
+      title="Workload & Ageing"
       meta={`As of 2026-10-30. Open cases: ${open.length}. Mean open ageing: ${open.length ? Math.round(openAge / open.length) : 0} days.`}
     >
       <div className="grid gap-3 p-3 lg:grid-cols-3">
-        <section className="border border-slate-200 bg-white">
+        <section className="rounded-xl border border-slate-200/80 bg-white shadow-sm">
           <h2 className="border-b border-slate-200 px-3 py-2 text-[13px] font-semibold text-navy">Open cases by ageing</h2>
           <table className="w-full text-left">
             <tbody>
@@ -45,8 +45,11 @@ export function ReportsScreen() {
                   <td className="px-3 py-2 text-[12px]">{item.label}</td>
                   <td className="px-3 py-2 text-[12px] tabular-nums">{item.count}</td>
                   <td className="w-1/2 px-3 py-2">
-                    <div className="h-2 bg-slate-100">
-                      <div className="h-2 bg-navy" style={{ width: `${(item.count / max) * 100}%` }} />
+                    <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className={`h-2 rounded-full ${item.label.startsWith("0") ? "bg-emerald-500" : item.label.startsWith("8") ? "bg-sky-500" : item.label.startsWith("16") ? "bg-amber-500" : "bg-rose-500"}`}
+                        style={{ width: `${(item.count / max) * 100}%` }}
+                      />
                     </div>
                   </td>
                 </tr>
@@ -56,7 +59,7 @@ export function ReportsScreen() {
         </section>
         <ReportTable title="By route" pairs={countBy(rows, (row) => row.routeLabel)} />
         <ReportTable title="Open cases by assignee" pairs={countBy(open, (row) => row.assignee)} />
-        <section className="border border-slate-200 bg-white lg:col-span-3">
+        <section className="rounded-xl border border-slate-200/80 bg-white shadow-sm lg:col-span-3">
           <h2 className="border-b border-slate-200 px-3 py-2 text-[13px] font-semibold text-navy">
             Due actions on 2026-10-30
           </h2>
@@ -78,7 +81,7 @@ export function ReportsScreen() {
             </table>
           )}
         </section>
-        <section className="border border-slate-200 bg-white lg:col-span-3">
+        <section className="rounded-xl border border-slate-200/80 bg-white shadow-sm lg:col-span-3">
           <h2 className="border-b border-slate-200 px-3 py-2 text-[13px] font-semibold text-navy">Register used for the counts</h2>
           <table className="w-full text-left">
             <thead className="text-[10px] uppercase tracking-wide text-slate-500">
@@ -112,7 +115,7 @@ export function ReportsScreen() {
 
 function ReportTable({ title, pairs }: { title: string; pairs: Array<[string, number]> }) {
   return (
-    <section className="border border-slate-200 bg-white">
+    <section className="rounded-xl border border-slate-200/80 bg-white shadow-sm">
       <h2 className="border-b border-slate-200 px-3 py-2 text-[13px] font-semibold text-navy">{title}</h2>
       <table className="w-full text-left">
         <tbody>

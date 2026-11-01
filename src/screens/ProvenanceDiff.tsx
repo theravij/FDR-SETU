@@ -16,10 +16,10 @@ export function ProvenanceDiff() {
   const hasV2 = snapshot.versions.some((item) => item.versionId === "V2");
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-3">
       <div className="grid shrink-0 grid-cols-4 gap-2">
         {TIERS.map(([tier, name, copy]) => (
-          <article key={tier} className="border border-slate-200 bg-white px-2 py-1.5">
+          <article key={tier} className="rounded-xl border border-slate-200/80 bg-white px-2 py-1.5 shadow-sm">
             <h2 className="text-[12px] font-semibold text-navy">
               {tier} · {name}
             </h2>
@@ -65,7 +65,7 @@ export function ProvenanceDiff() {
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.field} className={row.material ? "bg-amber-50" : row.changed ? "bg-slate-50" : ""}>
+              <tr key={row.field} className={row.material ? "bg-amber-50" : row.changed ? "bg-slate-50" : "bg-emerald-50/40"}>
                 <td className="border-b border-slate-100 px-2 py-1.5 text-[12px] font-medium text-navy">{row.field}</td>
                 <td className="border-b border-slate-100 px-2 py-1.5 text-[12px] text-slate-700">{row.tier}</td>
                 <td className="border-b border-slate-100 px-2 py-1.5 font-mono text-[11px] text-slate-800">{row.v1}</td>

@@ -264,11 +264,11 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
           "Switch the acting role to INST-01 to submit the corrected instrument.",
         );
       }
-      if (state.cases["DEMO-001"].currentVersionId === "V2" && state.step >= 5) {
-        return { ...state, screen: "workspace", phase: 3, notice: null };
+      if (state.cases["DEMO-001"].currentVersionId === "V2" && state.step >= 3) {
+        return { ...state, screen: "workspace", tab: "recheck", phase: 3, notice: null };
       }
       return {
-        ...withCanonicalStep(state, 5, { screen: "workspace", tab: "recheck", phase: 3 }),
+        ...withCanonicalStep(state, 3, { screen: "workspace", tab: "recheck", phase: 3 }),
         notice: {
           tone: "ok",
           title: "Corrected instrument submitted",

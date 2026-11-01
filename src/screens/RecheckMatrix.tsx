@@ -1,16 +1,9 @@
+import { Lock, AlertTriangle, RefreshCw } from "lucide-react";
 import { formatInr, shortHash } from "../lib/format";
 import { useDemo } from "../state/store";
-import type { EvaluatedCheck, Evaluation, InstrumentVersion, Step } from "../types";
+import type { EvaluatedCheck, Evaluation, InstrumentVersion } from "../types";
 import { SUPERSEDED_V1_BADGE } from "../types";
-import { StatusBadge } from "../components/ui";
-
-const STEPS: Array<{ step: Step; label: string }> = [
-  { step: 1, label: "V1 on file" },
-  { step: 2, label: "V1 confirmed" },
-  { step: 3, label: "V2 uploaded" },
-  { step: 4, label: "V2 confirmed" },
-  { step: 5, label: "Ready for decision" },
-];
+import { Btn, StatusBadge } from "../components/ui";
 
 function bucketBorder(bucket: EvaluatedCheck["bucket"]): string {
   if (bucket === "invalidated") return "border-l-crimson";
@@ -39,7 +32,7 @@ function VersionCard({
     );
   }
   return (
-    <div className={`flex-1 border px-3 py-2 ${current ? "border-navy bg-white" : "border-slate-200 bg-slate-50"}`}>
+    <div className={`flex-1 rounded-xl border px-3 py-2 shadow-sm ${current ? "border-indigo-200 bg-white" : "border-slate-200 bg-slate-50"}`}>
       <div className="flex items-center gap-2">
         <span className="text-[12px] font-semibold text-navy">{version.versionId}</span>
         {current ? <span className="text-[10px] font-semibold tracking-wide text-navy">CURRENT</span> : <span className="text-[10px] font-medium text-slate-500">ON FILE</span>}
@@ -75,7 +68,7 @@ function ScoreCell({
         ? "border-emerald-200 bg-emerald-50"
         : "border-slate-300 bg-white";
   return (
-    <div className={`border px-3 py-1.5 ${toneClass}`}>
+    <div className={`rounded-xl border px-3 py-1.5 shadow-sm ${toneClass}`}>
       <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
       <p className="text-base font-semibold leading-none text-navy">{ids.length}</p>
       <p className="mt-1 text-[12px] font-medium text-navy">{ids.length ? ids.join(" · ") : "—"}</p>
@@ -94,17 +87,24 @@ function headline(evaluation: Evaluation): string {
   return "V2 is covered by fresh bank evidence. CHK-03 and CHK-04 were not reopened.";
 }
 
+function markLabel(status: EvaluatedCheck["status"]): string {
+  if (status === "DISCREPANCY") return "Mismatch";
+  if (status === "RECHECK_REQUIRED") return "Changed in V2 — needs recheck";
+  if (status === "PRESERVED_CONFIRMED" || status === "CONFIRMED") return "Verified & locked";
+  if (status === "PENDING") return "Pending";
+  return "Blocked";
+}
+
 export function RecheckMatrix() {
-  const { state, evaluation, setStep } = useDemo();
+  const { state, evaluation, setStep, setRole, confirmV1 } = useDemo();
   const snapshot = state.cases[state.caseId];
   const v1 = snapshot.versions.find((item) => item.versionId === "V1");
   const v2 = snapshot.versions.find((item) => item.versionId === "V2");
-  const showTimeline = snapshot.caseId === "DEMO-001";
   const acceptedOnV1 = snapshot.reconciliations.find((item) => item.versionId === "V1")?.acceptedAmountInr;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-1.5 p-2.5">
-      <div className="shrink-0 border border-slate-200 bg-white px-3 py-1.5">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-3">
+      <div className="shrink-0 rounded-xl border border-slate-200/80 bg-slate-50 px-3 py-2">
         <p className="text-[12px] font-semibold text-navy">{headline(evaluation)}</p>
         <p className="text-[11px] text-slate-600">
           A check reopens only when its own inputs change. A new file hash alone does not reopen a check.
@@ -129,7 +129,7 @@ export function RecheckMatrix() {
         />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto border border-slate-200 bg-white">
+      <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200/80 bg-white shadow-sm">
         <table className="w-full border-collapse text-left">
           <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
             <tr>
@@ -149,7 +149,33 @@ export function RecheckMatrix() {
                 </td>
                 <td className="border-b border-slate-100 px-2 py-1 align-top text-[12px] text-slate-700">{check.scope}</td>
                 <td className="border-b border-slate-100 px-2 py-1 align-top">
-                  <StatusBadge status={check.status} />
+                  <div className="flex flex-col items-start gap-1">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-800">
+                      {check.status === "DISCREPANCY" ? <AlertTriangle size={12} aria-hidden /> : check.status === "RECHECK_REQUIRED" ? <RefreshCw size={12} aria-hidden /> : <Lock size={12} aria-hidden />}
+                      {markLabel(check.status)}
+                    </span>
+                    <StatusBadge status={check.status} />
+                    {check.status === "DISCREPANCY" ? (
+                      <Btn
+                        onClick={() => {
+                          if (state.role !== "RO-104") setRole("RO-104");
+                          else confirmV1();
+                        }}
+                      >
+                        {state.role === "RO-104" ? "Confirm mismatch" : "Switch to RO-104"}
+                      </Btn>
+                    ) : null}
+                    {check.status === "RECHECK_REQUIRED" && snapshot.caseId === "DEMO-001" ? (
+                      <Btn
+                        onClick={() => {
+                          if (state.role !== "RO-104") setRole("RO-104");
+                          else setStep(4);
+                        }}
+                      >
+                        {state.role === "RO-104" ? "Verify field" : "Switch to RO-104"}
+                      </Btn>
+                    ) : null}
+                  </div>
                 </td>
                 <td className="border-b border-slate-100 px-2 py-1 align-top text-[12px] leading-snug text-slate-700">{check.reason}</td>
                 <td className="border-b border-slate-100 px-2 py-1 align-top">
@@ -213,27 +239,6 @@ export function RecheckMatrix() {
         </p>
       )}
 
-      {showTimeline ? (
-        <div className="grid shrink-0 grid-cols-5 gap-1">
-          {STEPS.map((item) => {
-            const selected = state.step === item.step && state.caseId === "DEMO-001";
-            return (
-              <button
-                key={item.step}
-                type="button"
-                data-tour={`step-${item.step}`}
-                onClick={() => setStep(item.step)}
-                aria-pressed={selected}
-                className={`border px-2 py-1 text-left text-[11px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy ${
-                  selected ? "border-navy bg-navy text-white" : "border-slate-200 bg-white text-navy hover:bg-slate-50"
-                }`}
-              >
-                <span className="block font-semibold leading-tight">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
     </div>
   );
 }
