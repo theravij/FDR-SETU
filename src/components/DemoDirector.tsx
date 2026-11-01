@@ -189,7 +189,10 @@ export function DemoDirector({ children }: { children: ReactNode }) {
       },
       () => humanType('[data-demo-target="queue-search"]', "National Institute"),
       () => glideClick('[data-demo-target="open-DEMO-001"]'),
-      () => moveTo('[data-demo-target="fdr-certificate"]'),
+      async () => {
+        await moveTo('[data-demo-target="fdr-certificate"]');
+        await sleep(900);
+      },
       () => moveTo('[data-demo-target="check-row-CHK-01"]'),
       () => humanType('[data-demo-target="officer-note-input"]', "V1 scan confirms ₹30L against ₹35L declared. Returning for V2.", { correctOnce: true }),
       () => glideClick('[data-demo-target="step1-flag-btn"]'),
@@ -208,16 +211,27 @@ export function DemoDirector({ children }: { children: ReactNode }) {
         api().setRole("RO-104");
         api().navigate({ screen: "workspace", tab: "recheck", caseId: "DEMO-001" });
       },
-      () => moveTo('[data-demo-target="check-row-CHK-03"]'),
+      async () => {
+        await moveTo('[data-demo-target="check-row-CHK-03"]');
+        await sleep(900);
+      },
       () => moveTo('[data-demo-target="check-row-CHK-04"]'),
       () => glideClick('[data-demo-target="check-row-CHK-01"]'),
       () => glideClick('[data-demo-target="check-row-CHK-02"]'),
-      () => glideClick('[data-demo-target="tab-provenance"]'),
+      async () => {
+        await glideClick('[data-demo-target="tab-provenance"]');
+        await sleep(900);
+      },
       () => glideClick('[data-demo-target="tab-clearances"]'),
       () => glideClick('[data-demo-target="tab-audit"]'),
       () => glideClick('[data-demo-target="step4-confirm-btn"]'),
       () => humanType('[data-demo-target="director-note-input"]', "Selective recheck verified on V2. Cleared for record."),
-      () => glideClick('[data-demo-target="step5-authorise-btn"]'),
+      async () => {
+        await glideClick('[data-demo-target="step5-authorise-btn"]');
+        await sleep(120);
+        await moveTo('[data-demo-target="verification-seal"]');
+        await sleep(900);
+      },
       () => glideClick('[data-demo-target="nav-reports"]'),
       () => moveTo('[data-demo-target="workload-board"]'),
       () => glideClick('[data-demo-target="nav-baseline"]'),

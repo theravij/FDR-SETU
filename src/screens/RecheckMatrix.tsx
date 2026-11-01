@@ -3,14 +3,16 @@ import { useDemo } from "../state/store";
 import { CHECK_TITLES } from "../lib/labels";
 import type { EvaluatedCheck } from "../types";
 
-function pill(check: EvaluatedCheck): { text: string; className: string } {
-  if (check.status === "DISCREPANCY") return { text: "DISCREPANCY", className: "bg-rose-50 text-rose-800" };
+function pill(check: EvaluatedCheck): { text: string; className: string; edge: string } {
+  if (check.status === "DISCREPANCY") return { text: "DISCREPANCY", className: "bg-rose-50 text-rose-800", edge: "border-l-rose-500" };
   if (check.bucket === "preserved" || check.status === "PRESERVED_CONFIRMED") {
-    return { text: "PRESERVED FROM V1", className: "bg-emerald-50 text-emerald-800" };
+    return { text: "🔒 LOCKED FROM V1 · No Re-check Required", className: "bg-emerald-50 text-emerald-800", edge: "border-l-emerald-500" };
   }
-  if (check.bucket === "recomputed") return { text: "RECOMPUTED ON V2", className: "bg-indigo-50 text-indigo-800" };
-  if (check.status === "RECHECK_REQUIRED") return { text: "NEEDS RECHECK", className: "bg-amber-50 text-amber-900" };
-  return { text: "CONFIRMED", className: "bg-slate-50 text-slate-700" };
+  if (check.bucket === "recomputed") {
+    return { text: "⚡ RECOMPUTED ON V2 · Confirmed via EV-BNK-202", className: "bg-indigo-50 text-indigo-800", edge: "border-l-indigo-500" };
+  }
+  if (check.status === "RECHECK_REQUIRED") return { text: "NEEDS RECHECK", className: "bg-amber-50 text-amber-900", edge: "border-l-amber-400" };
+  return { text: "CONFIRMED", className: "bg-slate-50 text-slate-700", edge: "border-l-slate-200" };
 }
 
 export function RecheckMatrix() {
@@ -35,7 +37,7 @@ export function RecheckMatrix() {
                   key={check.id}
                   data-demo-target={`check-row-${check.id}`}
                   onClick={() => setOpenId((current) => (current === check.id ? null : check.id))}
-                  className={`cursor-pointer border-b border-slate-100 last:border-0 ${openId === check.id ? "bg-indigo-50" : ""}`}
+                  className={`cursor-pointer border-b border-l-4 border-slate-100 last:border-b-0 ${mark.edge} ${openId === check.id ? "bg-slate-50" : ""}`}
                 >
                   <td className="px-3 py-2 align-top">
                     <p className="text-[13px] font-semibold text-slate-900">{CHECK_TITLES[check.id]}</p>

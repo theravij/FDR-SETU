@@ -169,11 +169,13 @@ function Certificate({
   if (!preview) return null;
   const mismatch = preview.fields.declaredAmountInr !== preview.fields.observedAmountInr;
   const delta = preview.fields.observedAmountInr - preview.fields.declaredAmountInr;
+  const coverage = preview.fields.declaredAmountInr > 0 ? Math.min(100, Math.max(0, (preview.fields.observedAmountInr / preview.fields.declaredAmountInr) * 100)) : 0;
+  const shortfallPct = preview.fields.declaredAmountInr > 0 ? ((Math.abs(delta) / preview.fields.declaredAmountInr) * 100).toFixed(1) : "0.0";
   const evidence = snapshot.bankEvidence.find((item) => item.coversVersionId === preview.versionId);
   const rejected = preview.versionId === "V1" && mismatch;
 
   return (
-    <article data-demo-target="fdr-certificate" className="col-span-4 flex min-h-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
+    <article data-demo-target="fdr-certificate" className="group col-span-4 flex min-h-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 text-slate-800">
@@ -211,10 +213,19 @@ function Certificate({
           <p className="font-mono text-[13px] font-semibold tabular-nums">{formatInr(preview.fields.observedAmountInr)}</p>
         </div>
       </div>
-      <p className={`mt-2 rounded-md px-2 py-1 text-[11px] font-semibold ${mismatch ? "bg-rose-50 text-rose-800" : "bg-emerald-50 text-emerald-800"}`}>
-        {mismatch ? `Shortfall: ${formatInr(delta)}` : "100% OCR verified match"}
-        {rejected ? " · V1 original rejected" : ""}
-      </p>
+      {mismatch ? (
+        <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 shadow-sm transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md">
+          <div className="h-1.5 overflow-hidden rounded-full bg-rose-100">
+            <div className="h-full rounded-full bg-rose-600" style={{ width: `${coverage}%` }} />
+          </div>
+          <p className="mt-1 text-[11px] font-semibold text-rose-800">
+            Δ {formatInr(delta)} Principal Shortfall ({shortfallPct}% under-deposit)
+            {rejected ? " · V1 original rejected" : ""}
+          </p>
+        </div>
+      ) : (
+        <p className="mt-2 rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-800">100% OCR verified match</p>
+      )}
       <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
         <div><dt className="text-slate-500">Issue date</dt><dd className="font-mono tabular-nums">{preview.fields.issueDate}</dd></div>
         <div><dt className="text-slate-500">Maturity date</dt><dd className="font-mono tabular-nums">{preview.fields.maturityOrValueDate}</dd></div>

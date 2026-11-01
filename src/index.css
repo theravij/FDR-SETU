@@ -27,6 +27,19 @@ body {
   animation: demo-ripple 420ms ease-out forwards;
 }
 
+@keyframes fdr-scan {
+  from {
+    top: 0;
+  }
+  to {
+    top: 100%;
+  }
+}
+
+.fdr-scan-line {
+  animation: fdr-scan 650ms linear forwards;
+}
+
 @keyframes demo-ripple {
   from {
     transform: scale(0.35);

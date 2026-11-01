@@ -13,6 +13,7 @@ export function InstitutionScreen() {
   const [note, setNote] = useState("");
   const [scanning, setScanning] = useState(false);
   const [verified, setVerified] = useState(false);
+  const [scanStep, setScanStep] = useState(0);
   const rows = registerRows(Object.values(state.cases)).filter((row) =>
     state.role === "INST-01" ? row.institutionId === "INST-NITS" : true,
   );
@@ -27,6 +28,12 @@ export function InstitutionScreen() {
     if (scanning) return;
     setScanning(true);
     setVerified(false);
+    setScanStep(0);
+    if (matched) {
+      window.setTimeout(() => setScanStep(1), 80);
+      window.setTimeout(() => setScanStep(2), 280);
+      window.setTimeout(() => setScanStep(3), 480);
+    }
     window.setTimeout(() => {
       setScanning(false);
       setVerified(matched);
@@ -73,8 +80,20 @@ export function InstitutionScreen() {
             className="mt-3 rounded-lg border border-dashed border-slate-300 px-3 py-2"
           >
             <button type="button" data-demo-target="inst-ocr-scan" onClick={runScan} className="text-[12px] font-semibold text-slate-900">Verify Instrument & Gateway Hash</button>
-            {scanning ? <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full w-2/3 animate-pulse rounded-full bg-indigo-500" /></div> : null}
-            {scanning ? <p className="mt-1 text-[11px] text-slate-600">Verifying PNB CBS gateway token & extracting OCR principal...</p> : null}
+            {scanning && matched ? (
+              <div className="relative mt-2 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <p className="font-mono text-[11px] text-slate-500">{serial || "Replacement instrument"}</p>
+                <p className="font-mono text-[13px] font-semibold tabular-nums text-slate-900">{formatInr(parsed)}</p>
+                <p className="font-mono text-[11px] text-slate-600">{token || "Gateway token pending"}</p>
+                <span className="fdr-scan-line pointer-events-none absolute left-0 right-0 top-0 h-0.5 bg-emerald-500" />
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {scanStep >= 1 ? <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">✓ OCR Principal: {formatInr(parsed)}</span> : null}
+                  {scanStep >= 2 ? <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">✓ Gateway Token: {token || "Pending"}</span> : null}
+                  {scanStep >= 3 ? <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">✓ SHA-256 Digest Verified</span> : null}
+                </div>
+              </div>
+            ) : null}
+            {scanning && !matched ? <p className="mt-1 text-[11px] text-slate-600">Verifying PNB CBS gateway token & extracting OCR principal...</p> : null}
             {verified ? <p className="mt-2 rounded-md bg-emerald-50 px-2 py-1 text-[12px] font-semibold text-emerald-800">EV-BNK-202 Verified · SHA-256 Match</p> : null}
           </div>
           <div className="mt-3">

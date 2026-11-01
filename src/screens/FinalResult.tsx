@@ -27,7 +27,17 @@ export function FinalResult() {
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Official AICTE verification certificate</p>
             <h2 className="font-mono text-[13px] font-semibold text-slate-900">{formatCaseRef(snapshot.caseId)}</h2>
           </div>
-          <StatusBadge status={evaluation.releaseAuthorised ? "RELEASED" : evaluation.releaseReady ? "READY FOR RELEASE" : evaluation.statusLabel} />
+          {evaluation.releaseAuthorised ? (
+            <aside data-demo-target="verification-seal" className="max-w-[220px] rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-right">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-900">Verified & cleared</p>
+              <p className="mt-0.5 font-mono text-[10px] text-emerald-800">{formatRuleVersion(evaluation.ruleVersion)}</p>
+              <p className="font-mono text-[10px] text-emerald-800">{shortHash(evaluation.evaluationHash, 12)}</p>
+              {officer ? <p className="mt-1 text-[10px] leading-snug text-slate-700">{officer}</p> : null}
+              {director ? <p className="text-[10px] leading-snug text-slate-700">{director}</p> : null}
+            </aside>
+          ) : (
+            <StatusBadge status={evaluation.releaseReady ? "READY FOR RELEASE" : evaluation.statusLabel} />
+          )}
         </header>
         <div className="grid grid-cols-2 gap-4 p-4">
           <section>
