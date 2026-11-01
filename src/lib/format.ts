@@ -4,7 +4,7 @@ import { SIM_AS_OF } from "../types";
 export function formatInr(amount: number): string {
   const sign = amount < 0 ? "-" : "";
   const digits = Math.abs(Math.round(amount)).toString();
-  if (digits.length <= 3) return `₹${sign}${digits}`;
+  if (digits.length <= 3) return `${sign}₹${digits}`;
   const head = digits.slice(0, -3);
   const tail = digits.slice(-3);
   const groups: string[] = [];
@@ -14,7 +14,7 @@ export function formatInr(amount: number): string {
     rest = rest.slice(0, -2);
   }
   if (rest) groups.unshift(rest);
-  return `₹${sign}${groups.join(",")},${tail}`;
+  return `${sign}₹${groups.join(",")},${tail}`;
 }
 
 export function shortHash(hash: string, size = 12): string {

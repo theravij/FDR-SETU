@@ -40,14 +40,16 @@ export function WorkspaceScreen() {
     <section className="flex min-h-0 flex-1 flex-col bg-slate-50 text-slate-900">
       <header className="shrink-0 border-b border-slate-200 bg-white px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="rounded-md bg-slate-950 px-2 py-1 font-mono text-[11px] font-semibold text-white">{formatCaseRef(snapshot.caseId)}</span>
+          <span className="shrink-0 whitespace-nowrap rounded-md bg-slate-950 px-2 py-1 font-mono text-[11px] font-semibold text-white">{formatCaseRef(snapshot.caseId)}</span>
           <h1 className="min-w-0 truncate text-[14px] font-semibold text-slate-900">{snapshot.institutionName}</h1>
-          <span className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">{routeLabel(snapshot.route)}</span>
-          <StatusBadge status={evaluation.releaseAuthorised ? "RELEASED" : evaluation.releaseReady ? "READY FOR RELEASE" : evaluation.statusLabel} />
+          <span className="shrink-0 whitespace-nowrap rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">{routeLabel(snapshot.route)}</span>
+          <span className="shrink-0">
+            <StatusBadge status={evaluation.releaseAuthorised ? "RELEASED" : evaluation.releaseReady ? "READY FOR RELEASE" : evaluation.statusLabel} />
+          </span>
           {action ? (
             <Btn
               kind="primary"
-              className="ml-auto"
+              className="ml-auto shrink-0 whitespace-nowrap"
               data-demo-target="workflow-primary-cta"
               onClick={() => {
                 if (state.role !== action.role) setRole(action.role);
@@ -57,12 +59,12 @@ export function WorkspaceScreen() {
               {action.label}
             </Btn>
           ) : (
-            <span className="ml-auto text-[12px] font-medium text-emerald-800">Verification record issued</span>
+            <span className="ml-auto shrink-0 whitespace-nowrap text-[12px] font-medium text-emerald-800">Verification record issued</span>
           )}
         </div>
-        <div className="mt-2 flex items-center gap-3">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
           {snapshot.caseId === "DEMO-001" ? (
-            <div className="flex min-w-0 flex-1 gap-1" role="group" aria-label="Case lifecycle">
+            <div className="flex shrink-0 gap-1" role="group" aria-label="Case lifecycle">
               {STEPS.map((item) => {
                 const selected = state.step === item.step;
                 const done = state.step > item.step;
@@ -72,7 +74,7 @@ export function WorkspaceScreen() {
                     type="button"
                     aria-pressed={selected}
                     onClick={() => setStep(item.step)}
-                    className={`rounded-full border px-3 py-1.5 text-[11px] font-medium ${
+                    className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] font-medium ${
                       selected
                         ? "border-indigo-600 bg-indigo-600 text-white"
                         : done
@@ -85,10 +87,8 @@ export function WorkspaceScreen() {
                 );
               })}
             </div>
-          ) : (
-            <div className="flex-1" />
-          )}
-          <p className="flex shrink-0 items-center gap-2 font-mono text-[11px] tabular-nums text-slate-600">
+          ) : null}
+          <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] tabular-nums text-slate-600">
             <span>{matched ? `Declared vs scan: ${formatInr(evaluation.declaredAmountInr)} Matched` : `Declared vs scan: ${formatInr(evaluation.declaredAmountInr)} / ${formatInr(evaluation.observedAmountInr)} (${formatInr(delta)})`}</span>
             <span className="text-slate-300">|</span>
             <span>Recheck scope: {locked} locked · {recomputed} recomputed</span>
