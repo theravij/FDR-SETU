@@ -1,14 +1,17 @@
-import { useState } from "react";
 import { Copy, Landmark } from "lucide-react";
-import { shortHash } from "../lib/format";
-import { CHECK_TITLES, formatCaseRef, formatReleaseScope, formatRuleVersion, maskOperationalText } from "../lib/labels";
+import { formatInr, shortHash } from "../lib/format";
+import { CHECK_TITLES, formatCaseRef, formatReleaseScope, formatRuleVersion } from "../lib/labels";
 import { useDemo } from "../state/store";
-import { Btn, StatusBadge } from "../components/ui";
+import { StatusBadge } from "../components/ui";
 
 export function FinalResult() {
-  const { state, evaluation, attemptRelease } = useDemo();
+  const { state, evaluation } = useDemo();
   const snapshot = state.cases[state.caseId];
-  const [technical, setTechnical] = useState(false);
+  const remark = (action: string) => snapshot.audit.filter((event) => event.action === action).at(-1)?.detail;
+  const officer = remark("OFFICER_OBSERVATION");
+  const institution = remark("INSTITUTION_RESUBMISSION");
+  const director = remark("DIRECTOR_REMARK");
+  const v2 = snapshot.versions.find((item) => item.versionId === "V2");
   const copy = (value: string) => {
     void navigator.clipboard?.writeText(value);
   };
@@ -41,6 +44,10 @@ export function FinalResult() {
             <p className="mt-3 text-[12px] text-slate-600">
               {evaluation.blockers.length > 0 ? `Active blockers: ${evaluation.blockers.join("; ")}` : "No active blockers on the current version."}
             </p>
+            {officer ? <p className="mt-2 text-[12px] text-slate-700"><span className="font-semibold">Officer note.</span> {officer}</p> : null}
+            {v2 ? <p className="mt-1 text-[12px] text-slate-700"><span className="font-semibold">V2 instrument.</span> {v2.fields.referenceNumber} · {formatInr(v2.fields.observedAmountInr)}</p> : null}
+            {institution ? <p className="mt-1 text-[12px] text-slate-700"><span className="font-semibold">Institution note.</span> {institution}</p> : null}
+            {director ? <p className="mt-1 text-[12px] text-slate-700"><span className="font-semibold">Director remark.</span> {director}</p> : null}
           </section>
           <section className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <h3 className="text-[12px] font-semibold text-slate-900">Provenance and governance</h3>
@@ -54,23 +61,9 @@ export function FinalResult() {
             </p>
           </section>
         </div>
-        <footer className="flex items-center justify-between border-t border-slate-200 px-4 py-2">
-          {evaluation.releaseReady && !evaluation.releaseAuthorised ? (
-            <Btn kind="primary" onClick={attemptRelease}>
-              Authorise Verification Record
-            </Btn>
-          ) : (
-            <span className="text-[12px] text-slate-500">{evaluation.releaseAuthorised ? `Recorded by ${snapshot.release.by}` : "Decision is not ready."}</span>
-          )}
-          <button type="button" onClick={() => setTechnical((open) => !open)} className="text-[11px] text-slate-500 underline-offset-2 hover:underline">
-            View technical JSON
-          </button>
+        <footer className="border-t border-slate-200 px-4 py-2 text-[12px] text-slate-500">
+          {evaluation.releaseAuthorised ? `Recorded by ${snapshot.release.by}` : "Decision is recorded from the workspace action."}
         </footer>
-        {technical ? (
-          <pre className="max-h-40 overflow-auto border-t border-slate-200 bg-slate-950 p-3 font-mono text-[11px] leading-relaxed text-slate-100">
-            {maskOperationalText(JSON.stringify(evaluation, null, 2))}
-          </pre>
-        ) : null}
       </article>
     </div>
   );

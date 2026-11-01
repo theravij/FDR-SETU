@@ -27,7 +27,9 @@ export function WorkspaceScreen() {
   const matched = delta === 0;
   const locked = evaluation.selectiveRecheck.preserved.length;
   const recomputed = evaluation.selectiveRecheck.recomputed.length;
-  const action = primaryAction(demo);
+  const [officerNote, setOfficerNote] = useState("");
+  const [directorNote, setDirectorNote] = useState("");
+  const action = primaryAction(demo, officerNote, directorNote);
   const tabs: Array<{ id: WorkspaceTab; label: string }> = [
     { id: "recheck", label: "Selective Recheck" },
     { id: "provenance", label: "Provenance Diff" },
@@ -46,11 +48,21 @@ export function WorkspaceScreen() {
           <span className="shrink-0">
             <StatusBadge status={evaluation.releaseAuthorised ? "RELEASED" : evaluation.releaseReady ? "READY FOR RELEASE" : evaluation.statusLabel} />
           </span>
+          {state.step >= 5 && !evaluation.releaseAuthorised ? (
+            <input
+              data-demo-target="director-note-input"
+              value={directorNote}
+              onChange={(event) => setDirectorNote(event.target.value)}
+              placeholder="Enter final authorization remark..."
+              aria-label="Director sign-off remark"
+              className="ml-auto w-64 rounded-lg border border-slate-200 px-2 py-1.5 text-[12px] outline-none focus:border-indigo-400"
+            />
+          ) : null}
           {action ? (
             <Btn
               kind="primary"
-              className="ml-auto shrink-0 whitespace-nowrap"
-              data-demo-target="workflow-primary-cta"
+              className={`${state.step >= 5 && !evaluation.releaseAuthorised ? "" : "ml-auto"} shrink-0 whitespace-nowrap`}
+              data-demo-target={action.target}
               onClick={() => {
                 if (state.role !== action.role) setRole(action.role);
                 action.run();
@@ -101,7 +113,7 @@ export function WorkspaceScreen() {
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-12 gap-3 px-4 pb-3 pt-3">
-        <Certificate snapshot={snapshot} step={state.step} />
+        <Certificate snapshot={snapshot} step={state.step} officerNote={officerNote} onOfficerNote={setOfficerNote} />
 
         <div className="col-span-8 flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
           <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-slate-200 bg-slate-50 p-2" role="tablist" aria-label="Case inspection">
@@ -137,7 +149,17 @@ export function WorkspaceScreen() {
   );
 }
 
-function Certificate({ snapshot, step }: { snapshot: CaseSnapshot; step: number }) {
+function Certificate({
+  snapshot,
+  step,
+  officerNote,
+  onOfficerNote,
+}: {
+  snapshot: CaseSnapshot;
+  step: number;
+  officerNote: string;
+  onOfficerNote: (value: string) => void;
+}) {
   const versions = snapshot.versions;
   const [previewId, setPreviewId] = useState(snapshot.currentVersionId);
   useEffect(() => {
@@ -200,72 +222,75 @@ function Certificate({ snapshot, step }: { snapshot: CaseSnapshot; step: number 
         <div><dt className="text-slate-500">Institution</dt><dd className="font-mono">{preview.fields.aisheCode}</dd></div>
         <div className="col-span-2"><dt className="text-slate-500">Bank gateway evidence</dt><dd className="font-mono">{evidence?.id ?? "Pending"}</dd></div>
       </dl>
+      {step <= 1 && mismatch ? (
+        <input
+          data-demo-target="officer-note-input"
+          value={officerNote}
+          onChange={(event) => onOfficerNote(event.target.value)}
+          placeholder="Add verification observation for institution..."
+          aria-label="Officer review note"
+          className="mt-2 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-[12px] outline-none focus:border-indigo-400"
+        />
+      ) : null}
     </article>
   );
 }
 
-function primaryAction(demo: ReturnType<typeof useDemo>): {
+function primaryAction(demo: ReturnType<typeof useDemo>, officerNote: string, directorNote: string): {
   label: string;
   role: RoleId;
-  roleTitle: string;
-  explanation: string;
+  target: string;
   run: () => void;
 } | null {
-  const { state, evaluation, confirmV1, uploadV2, setStep, attemptRelease, toggleVigilance } = demo;
+  const { state, evaluation, confirmV1, forwardReview, attemptRelease, toggleVigilance, navigate } = demo;
   const snapshot = state.cases[state.caseId];
   if (evaluation.releaseAuthorised) return null;
   if (snapshot.vigilanceHold) {
     return {
       label: "Lift vigilance hold",
       role: "VIG-22",
-      roleTitle: "Vigilance",
-      explanation: "A vigilance hold is standing. Instrument checks are unchanged until VIG-22 lifts it.",
+      target: "step1-flag-btn",
       run: () => toggleVigilance(snapshot.caseId),
     };
   }
   if (snapshot.caseId === "DEMO-001" && state.step <= 1) {
     return {
-      label: "Flag ₹5L Discrepancy (as RO-104)",
+      label: "Flag ₹5L Discrepancy & Return to Institution",
       role: "RO-104",
-      roleTitle: "Review Officer",
-      explanation: "₹5,00,000 shortfall detected on V1 scan (₹30L observed vs ₹35L declared).",
-      run: confirmV1,
+      target: "step1-flag-btn",
+      run: () => confirmV1(officerNote),
     };
   }
   if (snapshot.caseId === "DEMO-001" && state.step === 2) {
     return {
-      label: "Submit Corrected V2 FDR (as INST-01)",
+      label: "Open institution portal",
       role: "INST-01",
-      roleTitle: "Institution",
-      explanation: "Institution action required: replace the deficient V1 instrument.",
-      run: uploadV2,
+      target: "workflow-primary-cta",
+      run: () => navigate({ screen: "institution" }),
     };
   }
   if (snapshot.caseId === "DEMO-001" && (state.step === 3 || state.step === 4)) {
     return {
-      label: "Confirm Selective Recheck (as RO-104)",
+      label: "Confirm Selective Recheck & Forward to Director",
       role: "RO-104",
-      roleTitle: "Review Officer",
-      explanation: "Selective recheck: 2 unchanged checks locked from V1; 2 amount and bank checks recomputed on V2.",
-      run: () => setStep(5),
+      target: "step4-confirm-btn",
+      run: () => forwardReview(),
     };
   }
   if (snapshot.caseId === "DEMO-001" && state.step >= 5 && evaluation.releaseReady) {
     return {
-      label: "Authorise Verification Record (as DIR-01)",
+      label: "Authorise Verification Record",
       role: "DIR-01",
-      roleTitle: "Director",
-      explanation: "All 4 checks verified on V2; ready for final sign-off.",
-      run: attemptRelease,
+      target: "step5-authorise-btn",
+      run: () => attemptRelease(directorNote),
     };
   }
   if (evaluation.releaseReady) {
     return {
-      label: "Authorise Verification Record (as DIR-01)",
+      label: "Authorise Verification Record",
       role: "DIR-01",
-      roleTitle: "Director",
-      explanation: "The current evaluation is ready for a director decision. Funds are not moved here.",
-      run: attemptRelease,
+      target: "step5-authorise-btn",
+      run: () => attemptRelease(directorNote),
     };
   }
   return null;

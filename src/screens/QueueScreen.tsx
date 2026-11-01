@@ -9,9 +9,11 @@ const FILTERS = ["All", "Discrepancy", "Recheck", "Ready", "Released", "Hold"] a
 type Filter = (typeof FILTERS)[number];
 
 export function QueueScreen() {
-  const { state, navigate, toggleVigilance, setRole } = useDemo();
+  const { state, navigate, toggleVigilance, setRole, intakeLive } = useDemo();
   const [filter, setFilter] = useState<Filter>("All");
   const [query, setQuery] = useState("");
+  const [filing, setFiling] = useState(false);
+  const [form, setForm] = useState({ institutionName: "", aisheCode: "", bankName: "Punjab National Bank", serial: "", declared: "", scanned: "" });
   const rows = useMemo(() => registerRows(Object.values(state.cases)), [state.cases]);
   const needle = query.trim().toLowerCase();
   const visible = rows.filter((row) => {
@@ -35,13 +37,17 @@ export function QueueScreen() {
       title="Officer Queue"
       meta="Triage open FDR and sanction-order files. Search by case, institution, or route."
       actions={
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search case, institution, route"
-          aria-label="Search the register"
-          className="w-64 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] shadow-sm outline-none focus:border-indigo-400"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            data-demo-target="queue-search"
+            placeholder="Search case, institution, route"
+            aria-label="Search the register"
+            className="w-64 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] shadow-sm outline-none focus:border-indigo-400"
+          />
+          <Btn kind="primary" onClick={() => setFiling(true)}>+ New FDR Filing</Btn>
+        </div>
       }
     >
       <div className="mb-3 grid grid-cols-4 gap-3">
@@ -131,7 +137,55 @@ export function QueueScreen() {
           </tbody>
         </table>
       </div>
+      {filing ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/40 p-4">
+          <form
+            className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-xl"
+            onSubmit={(event) => {
+              event.preventDefault();
+              intakeLive({
+                institutionName: form.institutionName,
+                aisheCode: form.aisheCode,
+                bankName: form.bankName,
+                serial: form.serial,
+                declared: Number(form.declared) || 0,
+                scanned: Number(form.scanned) || 0,
+              });
+              setFiling(false);
+              navigate({ screen: "workspace", tab: "recheck", caseId: "DEMO-001" });
+            }}
+          >
+            <h2 className="text-[15px] font-semibold text-slate-900">New FDR filing</h2>
+            <div className="mt-3 grid gap-2">
+              <Field label="Institution name" value={form.institutionName} onChange={(value) => setForm({ ...form, institutionName: value })} />
+              <Field label="AISHE code" value={form.aisheCode} onChange={(value) => setForm({ ...form, aisheCode: value })} />
+              <Field label="Bank name" value={form.bankName} onChange={(value) => setForm({ ...form, bankName: value })} />
+              <Field label="FDR serial number" value={form.serial} onChange={(value) => setForm({ ...form, serial: value })} />
+              <Field label="Declared amount (₹)" value={form.declared} onChange={(value) => setForm({ ...form, declared: value })} numeric />
+              <Field label="OCR scanned amount (₹)" value={form.scanned} onChange={(value) => setForm({ ...form, scanned: value })} numeric />
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <Btn onClick={() => setFiling(false)}>Cancel</Btn>
+              <Btn kind="primary" type="submit">Run Live Engine Intake</Btn>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </ScreenFrame>
+  );
+}
+
+function Field({ label, value, onChange, numeric }: { label: string; value: string; onChange: (value: string) => void; numeric?: boolean }) {
+  return (
+    <label className="block text-[11px] font-medium text-slate-600">
+      {label}
+      <input
+        value={value}
+        inputMode={numeric ? "numeric" : undefined}
+        onChange={(event) => onChange(numeric ? event.target.value.replace(/[^\d]/g, "") : event.target.value)}
+        className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-[12px] outline-none focus:border-indigo-400"
+      />
+    </label>
   );
 }
 

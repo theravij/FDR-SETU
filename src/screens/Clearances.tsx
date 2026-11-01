@@ -17,7 +17,7 @@ export function Clearances() {
       title: "RBAC release attempt",
       copy: "Submits the current evaluationHash for authorisation. RO-104, VIG-22 and INST-01 receive HTTP 403. DIR-01 is refused with HTTP 409 until the case is ready.",
       action: `Attempt release as ${state.role}`,
-      onClick: demo.attemptRelease,
+      onClick: () => demo.attemptRelease(),
     },
     {
       title: "Bank gateway outage",

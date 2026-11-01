@@ -19,10 +19,13 @@ import {
 import { evaluateCase } from "../engine/evaluateCase";
 import { can } from "../engine/permissions";
 import { registerCsv } from "../engine/register";
+import { appendAudit, sealAudit } from "../lib/audit";
 import { evaluateCaseWithFallback, type EngineSource } from "../lib/api";
 import { downloadText } from "../lib/download";
+import { formatCaseRef } from "../lib/labels";
 import { clearLocationChrome } from "../lib/url";
-import type { CaseSnapshot, Evaluation, Notice, RoleId, ScreenId, Step, WorkspaceTab } from "../types";
+import { identityScopeHash, lienScopeHash, makeVersion } from "../engine/material";
+import type { BankEvidence, CaseSnapshot, Evaluation, InstrumentFields, InstrumentVersion, Notice, RoleId, ScreenId, Step, WorkspaceTab } from "../types";
 
 export type FlowPhase = 1 | 2 | 3 | 4;
 
@@ -37,6 +40,7 @@ export interface DemoState {
   gatewayOutage: boolean;
   frozenHash: string | null;
   notice: Notice | null;
+  liveIntake: boolean;
 }
 
 type DemoAction =
@@ -44,15 +48,17 @@ type DemoAction =
   | { type: "navigate"; screen?: ScreenId; tab?: WorkspaceTab; caseId?: string }
   | { type: "set-step"; step: Step }
   | { type: "set-phase"; phase: FlowPhase }
-  | { type: "confirm-v1" }
+  | { type: "confirm-v1"; note: string }
   | { type: "reset" }
   | { type: "cosmetic" }
-  | { type: "release" }
+  | { type: "release"; remark: string }
+  | { type: "forward" }
+  | { type: "intake"; institutionName: string; aisheCode: string; bankName: string; serial: string; declared: number; scanned: number }
   | { type: "gateway" }
   | { type: "manual-letter" }
   | { type: "escalate" }
   | { type: "stale-hash" }
-  | { type: "upload-v2" }
+  | { type: "upload-v2"; serial: string; amount: number; token: string; note: string; ocrMatched: boolean }
   | { type: "vigilance"; caseId: string }
   | { type: "dismiss-notice" }
   | { type: "notify"; notice: Notice };
@@ -83,6 +89,7 @@ function fresh(step: Step = 1): DemoState {
     gatewayOutage: false,
     frozenHash: null,
     notice: null,
+    liveIntake: false,
   };
 }
 
@@ -105,18 +112,144 @@ function createInitial(): DemoState {
     gatewayOutage: stored?.gatewayOutage ?? false,
     frozenHash: null,
     notice: null,
+    liveIntake: false,
   };
 }
 
+function clockStamp(): string {
+  const ist = new Date(Date.now() + 330 * 60 * 1000);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${ist.getUTCFullYear()}-${pad(ist.getUTCMonth() + 1)}-${pad(ist.getUTCDate())}T${pad(ist.getUTCHours())}:${pad(ist.getUTCMinutes())}:${pad(ist.getUTCSeconds())}+05:30`;
+}
+
+function keepTypedNotes(previous: CaseSnapshot, next: CaseSnapshot): CaseSnapshot {
+  const kept = new Set(["OFFICER_OBSERVATION", "INSTITUTION_RESUBMISSION", "DIRECTOR_REMARK"]);
+  return previous.audit.filter((event) => kept.has(event.action)).reduce(
+    (snapshot, event) => appendAudit(snapshot, { at: event.at, actor: event.actor, action: event.action, detail: event.detail }),
+    next,
+  );
+}
+
 function withCanonicalStep(state: DemoState, step: Step, patch: Partial<DemoState>): DemoState {
+  const previous = state.cases["DEMO-001"];
+  const built = buildDemo001(step);
+  const snapshot = previous ? keepTypedNotes(previous, built) : built;
   return {
     ...state,
     ...patch,
     step,
     caseId: "DEMO-001",
-    cases: { ...state.cases, "DEMO-001": buildDemo001(step) },
+    cases: { ...state.cases, "DEMO-001": snapshot },
     frozenHash: null,
     notice: null,
+  };
+}
+
+function writeNote(snapshot: CaseSnapshot, event: { actor: string; action: string; detail: string }): CaseSnapshot {
+  const detail = event.detail.trim();
+  if (!detail) return snapshot;
+  return appendAudit(snapshot, { ...event, detail, at: clockStamp() });
+}
+
+function coverEvidence(version: InstrumentVersion, id: string, token: string): BankEvidence {
+  return {
+    id,
+    coversVersionId: version.versionId,
+    coversSubstantiveHash: version.substantiveHash,
+    tier: "T1_BANK_API",
+    source: "BANK_GATEWAY",
+    gatewayStatus: "CONFIRMED",
+    amountInr: version.fields.observedAmountInr,
+    referenceNumber: version.fields.referenceNumber,
+    recordedAt: clockStamp(),
+    recordedBy: "RO-104",
+    reference: token || "PNB-GW-LIVE",
+    statement: `Bank gateway confirmation of ${version.fields.referenceNumber}. Coverage is limited to ${version.versionId}.`,
+  };
+}
+
+function liveFiling(input: { institutionName: string; aisheCode: string; bankName: string; serial: string; declared: number; scanned: number }): CaseSnapshot {
+  const fields: InstrumentFields = {
+    referenceNumber: input.serial.trim() || "FDR/PNB/LIVE/00001",
+    bankName: input.bankName.trim() || "Punjab National Bank",
+    branchCode: "0142",
+    declaredAmountInr: input.declared,
+    observedAmountInr: input.scanned,
+    issueDate: "2024-04-12",
+    maturityOrValueDate: "2027-04-12",
+    beneficiaryOrDdo: "All India Council for Technical Education",
+    institutionName: input.institutionName.trim() || "National Institute of Technical Studies",
+    aisheCode: input.aisheCode.trim() || "C-42817",
+    pan: "AAACN1234F",
+    instrumentKind: "FDR",
+    utr: "",
+  };
+  const version = makeVersion({
+    versionId: "V1",
+    label: "Original scan",
+    uploadedAt: clockStamp(),
+    uploadedBy: "INST-01",
+    fileName: "FDR-V1.pdf",
+    fileSeed: `FDR-SETU-FILE|LIVE|V1|${fields.referenceNumber}|${fields.observedAmountInr}`,
+    fields,
+  });
+  return {
+    caseId: "DEMO-001",
+    institutionId: "INST-NITS",
+    institutionName: fields.institutionName,
+    route: "NOC_FDR",
+    openedOn: "2026-10-12",
+    assignee: "RO-104",
+    currentVersionId: "V1",
+    versions: [version],
+    reconciliations: [],
+    bankEvidence: [],
+    identityConfirmed: true,
+    identityScopeHash: identityScopeHash(fields),
+    lienConfirmed: true,
+    lienScopeHash: lienScopeHash(fields),
+    vigilanceHold: false,
+    vigilanceNote: "",
+    escalation: null,
+    release: { authorised: false, by: null, at: null, evaluationHash: null },
+    audit: sealAudit([
+      {
+        at: clockStamp(),
+        actor: "INST-01",
+        action: "CASE_OPENED",
+        detail: `${fields.institutionName} filed ${fields.referenceNumber} for verification.`,
+      },
+    ]),
+    raceToken: "",
+  };
+}
+
+function liveReplacement(snapshot: CaseSnapshot, input: { serial: string; amount: number; token: string; ocrMatched: boolean }): CaseSnapshot {
+  const v1 = snapshot.versions.find((item) => item.versionId === "V1") ?? snapshot.versions[0];
+  const fields: InstrumentFields = {
+    ...v1.fields,
+    referenceNumber: input.serial.trim() || v1.fields.referenceNumber,
+    observedAmountInr: input.amount,
+    declaredAmountInr: v1.fields.declaredAmountInr,
+    issueDate: "2025-11-02",
+    maturityOrValueDate: "2028-11-02",
+  };
+  const v2 = makeVersion({
+    versionId: "V2",
+    label: "Replacement instrument",
+    uploadedAt: clockStamp(),
+    uploadedBy: "INST-01",
+    fileName: "FDR-V2.pdf",
+    fileSeed: `FDR-SETU-FILE|LIVE|V2|${fields.referenceNumber}|${fields.observedAmountInr}`,
+    fields,
+  });
+  const matched = input.ocrMatched && input.amount === v1.fields.declaredAmountInr;
+  const bankEvidence = matched ? [...snapshot.bankEvidence, coverEvidence(v2, "EV-BNK-202", input.token)] : snapshot.bankEvidence;
+  return {
+    ...snapshot,
+    currentVersionId: "V2",
+    versions: [v1, v2],
+    bankEvidence,
   };
 }
 
@@ -144,12 +277,64 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
         caseId: action.caseId && state.cases[action.caseId] ? action.caseId : state.caseId,
       };
     case "set-step":
+      if (state.liveIntake) return { ...state, step: action.step, screen: "workspace", notice: null };
       return withCanonicalStep(state, action.step, { screen: "workspace" });
     case "set-phase":
       if (action.phase === 1) return withCanonicalStep(state, 1, { screen: "workspace", phase: 1, role: "RO-104" });
       return { ...state, screen: "workspace", phase: action.phase, notice: null };
-    case "confirm-v1":
-      return withCanonicalStep(state, 2, { screen: "workspace", phase: 2, role: "RO-104" });
+    case "confirm-v1": {
+      if (state.liveIntake) {
+        const current = state.cases["DEMO-001"];
+        const observed = current.versions[0]?.fields.observedAmountInr ?? 0;
+        const noted = writeNote(
+          {
+            ...current,
+            reconciliations: current.reconciliations.some((item) => item.versionId === "V1")
+              ? current.reconciliations
+              : [
+                  ...current.reconciliations,
+                  {
+                    id: "RCN-LIVE",
+                    versionId: "V1",
+                    acceptedAmountInr: observed,
+                    at: clockStamp(),
+                    by: "RO-104",
+                    note: action.note.trim() || "Officer accepted the scanned principal on V1.",
+                  },
+                ],
+          },
+          { actor: "RO-104", action: "OFFICER_OBSERVATION", detail: action.note },
+        );
+        return {
+          ...state,
+          screen: "workspace",
+          phase: 2,
+          step: 2,
+          role: "RO-104",
+          notice: null,
+          cases: { ...state.cases, "DEMO-001": noted },
+        };
+      }
+      const stepped = withCanonicalStep(state, 2, { screen: "workspace", phase: 2, role: "RO-104" });
+      const noted = writeNote(stepped.cases["DEMO-001"], { actor: "RO-104", action: "OFFICER_OBSERVATION", detail: action.note });
+      return { ...stepped, cases: { ...stepped.cases, "DEMO-001": noted } };
+    }
+    case "forward":
+      return { ...state, step: 5, screen: "workspace", tab: "recheck", phase: 4, notice: null };
+    case "intake":
+      return {
+        ...state,
+        liveIntake: true,
+        screen: "workspace",
+        tab: "recheck",
+        step: 1,
+        phase: 1,
+        caseId: "DEMO-001",
+        role: "RO-104",
+        notice: null,
+        frozenHash: null,
+        cases: { ...state.cases, "DEMO-001": liveFiling(action) },
+      };
     case "reset":
       return fresh(1);
     case "dismiss-notice":
@@ -175,21 +360,22 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
       const current = state.cases[state.caseId];
       const presented = evaluateCase(current).evaluationHash;
       const decision = decideRelease(current, state.role, presented);
-      return putCase(state, decision.snapshot, {
-        tone: decision.ok ? "ok" : decision.http === 403 ? "deny" : "warn",
-        title: decision.ok
-          ? "Release authorised"
-          : decision.http === 403
-            ? "Director approval required"
-            : decision.http === 409
-              ? "Case is not ready"
-              : decision.title,
-        body: decision.ok
-          ? "The case is verified. The NOC and payment stay with the authorised AICTE process."
-          : decision.http === 403
-            ? "Only DIR-01 can authorise release."
-            : decision.body,
-      });
+      if (!decision.ok) {
+        return putCase(state, decision.snapshot, {
+          tone: decision.http === 403 ? "deny" : "warn",
+          title: decision.http === 403 ? "Director approval required" : decision.http === 409 ? "Case is not ready" : decision.title,
+          body: decision.http === 403 ? "Only DIR-01 can authorise release." : decision.body,
+          http: decision.http,
+        });
+      }
+      const noted = writeNote(decision.snapshot, { actor: "DIR-01", action: "DIRECTOR_REMARK", detail: action.remark });
+      return {
+        ...state,
+        screen: "workspace",
+        tab: "result",
+        notice: null,
+        cases: { ...state.cases, [noted.caseId]: noted },
+      };
     }
     case "gateway":
       return {
@@ -264,17 +450,26 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
           "Switch the acting role to INST-01 to submit the corrected instrument.",
         );
       }
-      if (state.cases["DEMO-001"].currentVersionId === "V2" && state.step >= 3) {
-        return { ...state, screen: "workspace", tab: "recheck", phase: 3, notice: null };
-      }
-      return {
-        ...withCanonicalStep(state, 3, { screen: "workspace", tab: "recheck", phase: 3 }),
-        notice: {
-          tone: "ok",
-          title: "Corrected instrument submitted",
-          body: "Two unchanged checks were preserved. Only modified fields were re-evaluated.",
-        },
-      };
+      const canonical = !state.liveIntake && action.serial === "FDR/PNB/2025/91007" && action.amount === 3_500_000;
+      const base = canonical
+        ? withCanonicalStep(state, 4, { screen: "workspace", tab: "recheck", phase: 3, role: "INST-01" })
+        : {
+            ...state,
+            liveIntake: true,
+            screen: "workspace" as const,
+            tab: "recheck" as const,
+            phase: 3 as const,
+            step: (action.ocrMatched ? 4 : 3) as Step,
+            role: "INST-01" as const,
+            notice: null,
+            cases: { ...state.cases, "DEMO-001": liveReplacement(state.cases["DEMO-001"], action) },
+          };
+      const noted = writeNote(base.cases["DEMO-001"], {
+        actor: "INST-01",
+        action: "INSTITUTION_RESUBMISSION",
+        detail: action.note || `Replacement ${action.serial} submitted for ${action.amount}. Gateway token ${action.token}.`,
+      });
+      return { ...base, cases: { ...base.cases, "DEMO-001": noted }, notice: null };
     }
     case "vigilance": {
       if (!can(state.role, "vigilance-hold")) {
@@ -304,17 +499,19 @@ interface DemoApi {
   navigate: (partial: { screen?: ScreenId; tab?: WorkspaceTab; caseId?: string }) => void;
   setStep: (step: Step) => void;
   setPhase: (phase: FlowPhase) => void;
-  confirmV1: () => void;
+  confirmV1: (note?: string) => void;
   submitV2: () => void;
+  forwardReview: () => void;
+  intakeLive: (input: { institutionName: string; aisheCode: string; bankName: string; serial: string; declared: number; scanned: number }) => void;
   reset: () => void;
   dismissNotice: () => void;
   cosmeticRescan: () => void;
-  attemptRelease: () => void;
+  attemptRelease: (remark?: string) => void;
   toggleGateway: () => void;
   recordManualLetter: () => void;
   escalateDemo005: () => void;
   runStaleHashBlock: () => void;
-  uploadV2: () => void;
+  uploadV2: (input?: { serial: string; amount: number; token: string; note: string; ocrMatched: boolean }) => void;
   toggleVigilance: (caseId: string) => void;
   exportJson: () => void;
   exportCsv: () => void;
@@ -360,20 +557,30 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       navigate: (partial) => send({ type: "navigate", ...partial }),
       setStep: (step) => send({ type: "set-step", step }),
       setPhase: (phase) => send({ type: "set-phase", phase }),
-      confirmV1: () => send({ type: "confirm-v1" }),
-      submitV2: () => send({ type: "upload-v2" }),
+      confirmV1: (note = "") => send({ type: "confirm-v1", note }),
+      submitV2: () => send({ type: "upload-v2", serial: "FDR/PNB/2025/91007", amount: 3_500_000, token: "PNB-GW-2026-44802", note: "", ocrMatched: true }),
+      forwardReview: () => send({ type: "forward" }),
+      intakeLive: (input) => send({ type: "intake", ...input }),
       reset: () => {
         localStorage.removeItem(STORAGE_KEY);
         send({ type: "reset" });
       },
       dismissNotice: () => send({ type: "dismiss-notice" }),
       cosmeticRescan: () => send({ type: "cosmetic" }),
-      attemptRelease: () => send({ type: "release" }),
+      attemptRelease: (remark = "") => send({ type: "release", remark }),
       toggleGateway: () => send({ type: "gateway" }),
       recordManualLetter: () => send({ type: "manual-letter" }),
       escalateDemo005: () => send({ type: "escalate" }),
       runStaleHashBlock: () => send({ type: "stale-hash" }),
-      uploadV2: () => send({ type: "upload-v2" }),
+      uploadV2: (input) =>
+        send({
+          type: "upload-v2",
+          serial: input?.serial ?? "FDR/PNB/2025/91007",
+          amount: input?.amount ?? 3_500_000,
+          token: input?.token ?? "PNB-GW-2026-44802",
+          note: input?.note ?? "",
+          ocrMatched: input?.ocrMatched ?? true,
+        }),
       toggleVigilance: (caseId) => send({ type: "vigilance", caseId }),
       exportJson: () => {
         const snapshot = state.cases[state.caseId];
@@ -388,7 +595,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
             notice: {
               tone: "ok",
               title: "JSON exported",
-              body: `${snapshot.caseId} verification file downloaded.`,
+              body: `${formatCaseRef(snapshot.caseId)} verification file downloaded.`,
             },
           });
         });

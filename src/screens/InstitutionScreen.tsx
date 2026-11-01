@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { registerRows } from "../engine/register";
 import { formatInr } from "../lib/format";
 import { formatCaseRef } from "../lib/labels";
@@ -6,16 +7,31 @@ import { Btn, ScreenFrame, StatusBadge } from "../components/ui";
 
 export function InstitutionScreen() {
   const { state, uploadV2, navigate, setRole } = useDemo();
+  const [serial, setSerial] = useState("FDR/PNB/2024/88421");
+  const [amount, setAmount] = useState("3000000");
+  const [token, setToken] = useState("");
+  const [note, setNote] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [verified, setVerified] = useState(false);
   const rows = registerRows(Object.values(state.cases)).filter((row) =>
     state.role === "INST-01" ? row.institutionId === "INST-NITS" : true,
   );
   const demo = state.cases["DEMO-001"];
   const v1 = demo.versions.find((item) => item.versionId === "V1");
-  const v2 = demo.versions.find((item) => item.versionId === "V2");
+  const required = v1?.fields.declaredAmountInr ?? 3_500_000;
+  const parsed = Number(amount.replace(/[^\d]/g, "")) || 0;
+  const shortfall = required - parsed;
+  const matched = parsed === required;
   const already = demo.currentVersionId === "V2";
-  const replacementRef = v2?.fields.referenceNumber ?? "FDR/PNB/2025/91007";
-  const replacementAmount = v2?.fields.observedAmountInr ?? v1?.fields.declaredAmountInr ?? 0;
-  const replacementEvidence = demo.bankEvidence.find((item) => item.coversVersionId === "V2")?.id ?? "EV-BNK-202";
+  const runScan = () => {
+    if (scanning) return;
+    setScanning(true);
+    setVerified(false);
+    window.setTimeout(() => {
+      setScanning(false);
+      setVerified(matched);
+    }, 650);
+  };
 
   return (
     <ScreenFrame
@@ -27,31 +43,47 @@ export function InstitutionScreen() {
       }
     >
       <div className="mb-4 grid gap-3 lg:grid-cols-5">
-        <article data-demo-target="institution-compare" className="rounded-xl border border-rose-200 bg-white p-4 shadow-sm lg:col-span-3">
-          <p className="font-mono text-[11px] font-semibold text-rose-800">{formatCaseRef("DEMO-001")} · flagged by RO-104</p>
-          <h2 className="mt-1 text-[15px] font-semibold text-slate-900">Replace the deficient instrument</h2>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <figure className="rounded-lg bg-rose-50 px-3 py-2">
-              <figcaption className="text-[10px] font-semibold uppercase tracking-wide text-rose-700">V1 on file · {v1?.fields.referenceNumber ?? "FDR/PNB/2024/88421"}</figcaption>
-              <p className="font-mono text-[14px] font-semibold tabular-nums text-rose-900">{v1 ? formatInr(v1.fields.observedAmountInr) : "—"}</p>
-              <p className="text-[11px] text-rose-800">OCR shortfall against {v1 ? formatInr(v1.fields.declaredAmountInr) : "the declaration"}</p>
-            </figure>
-            <figure className="rounded-lg bg-emerald-50 px-3 py-2">
-              <figcaption className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800">Replacement V2 · {replacementRef}</figcaption>
-              <p className="font-mono text-[14px] font-semibold tabular-nums text-emerald-950">{formatInr(replacementAmount)}</p>
-              <p className="font-mono text-[11px] text-emerald-800">{replacementEvidence}</p>
-            </figure>
+        <article data-demo-target="institution-compare" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-3">
+          <p className="font-mono text-[11px] font-semibold text-slate-700">{formatCaseRef("DEMO-001")} · flagged by RO-104</p>
+          <h2 className="mt-1 text-[15px] font-semibold text-slate-900">V2 replacement instrument</h2>
+          <div className="mt-3 grid gap-2">
+            <label className="block text-[11px] font-medium text-slate-600">
+              Replacement FDR serial number
+              <input data-demo-target="inst-fdr-input" value={serial} onChange={(event) => setSerial(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 font-mono text-[12px] outline-none focus:border-indigo-400" />
+            </label>
+            <label className="block text-[11px] font-medium text-slate-600">
+              Corrected principal amount in ₹
+              <input data-demo-target="inst-amount-input" inputMode="numeric" value={amount} onChange={(event) => { setAmount(event.target.value.replace(/[^\d]/g, "")); setVerified(false); }} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 font-mono text-[12px] outline-none focus:border-indigo-400" />
+            </label>
+            <p className={`rounded-md px-2 py-1 text-[12px] font-semibold ${matched ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}>
+              {matched ? `✓ Principal Matched: ${formatInr(required)}` : `Shortfall: ${formatInr(-Math.abs(shortfall))}`}
+            </p>
+            <label className="block text-[11px] font-medium text-slate-600">
+              Bank gateway confirmation token
+              <input data-demo-target="inst-token-input" value={token} onChange={(event) => setToken(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 font-mono text-[12px] outline-none focus:border-indigo-400" />
+            </label>
+            <label className="block text-[11px] font-medium text-slate-600">
+              Reviewer resubmission note
+              <input data-demo-target="inst-note-input" value={note} onChange={(event) => setNote(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-[12px] outline-none focus:border-indigo-400" />
+            </label>
           </div>
-          <p className="mt-3 text-[12px] leading-snug text-slate-600">
-            Principal and bank confirmation reopen. Institution identity and the AICTE lien stay locked when those fields do not change.
-          </p>
+          <div
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => { event.preventDefault(); runScan(); }}
+            className="mt-3 rounded-lg border border-dashed border-slate-300 px-3 py-2"
+          >
+            <button type="button" data-demo-target="inst-ocr-scan" onClick={runScan} className="text-[12px] font-semibold text-slate-900">Verify Instrument & Gateway Hash</button>
+            {scanning ? <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full w-2/3 animate-pulse rounded-full bg-indigo-500" /></div> : null}
+            {scanning ? <p className="mt-1 text-[11px] text-slate-600">Verifying PNB CBS gateway token & extracting OCR principal...</p> : null}
+            {verified ? <p className="mt-2 rounded-md bg-emerald-50 px-2 py-1 text-[12px] font-semibold text-emerald-800">EV-BNK-202 Verified · SHA-256 Match</p> : null}
+          </div>
           <div className="mt-3">
             <Btn
               kind="primary"
-              data-demo-target="submit-v2"
+              data-demo-target="inst-submit-v2"
               onClick={() => {
                 if (state.role !== "INST-01") setRole("INST-01");
-                uploadV2();
+                uploadV2({ serial, amount: parsed, token, note, ocrMatched: verified && matched });
                 navigate({ screen: "workspace", tab: "recheck", caseId: "DEMO-001" });
               }}
             >

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useDemo } from "../state/store";
 import { CHECK_TITLES } from "../lib/labels";
 import type { EvaluatedCheck } from "../types";
@@ -14,6 +15,7 @@ function pill(check: EvaluatedCheck): { text: string; className: string } {
 
 export function RecheckMatrix() {
   const { evaluation } = useDemo();
+  const [openId, setOpenId] = useState<string | null>(null);
   const { preserved, recomputed, invalidated } = evaluation.selectiveRecheck;
 
   return (
@@ -29,7 +31,12 @@ export function RecheckMatrix() {
             {evaluation.checks.map((check) => {
               const mark = pill(check);
               return (
-                <tr key={check.id} data-demo-target={`check-${check.id}`} className="border-b border-slate-100 last:border-0">
+                <tr
+                  key={check.id}
+                  data-demo-target={`check-row-${check.id}`}
+                  onClick={() => setOpenId((current) => (current === check.id ? null : check.id))}
+                  className={`cursor-pointer border-b border-slate-100 last:border-0 ${openId === check.id ? "bg-indigo-50" : ""}`}
+                >
                   <td className="px-3 py-2 align-top">
                     <p className="text-[13px] font-semibold text-slate-900">{CHECK_TITLES[check.id]}</p>
                     <p className="font-mono text-[10px] text-slate-500">{check.id}</p>

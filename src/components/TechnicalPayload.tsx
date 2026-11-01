@@ -4,7 +4,6 @@ import { useDemo } from "../state/store";
 export function TechnicalPayload() {
   const { evaluation } = useDemo();
   const [open, setOpen] = useState(false);
-  const json = JSON.stringify(evaluation, null, 2);
 
   return (
     <div className="shrink-0 border-t border-slate-200 bg-white">
@@ -17,11 +16,7 @@ export function TechnicalPayload() {
         <span>View Technical Payload</span>
         <span aria-hidden>{open ? "Hide" : "Show"}</span>
       </button>
-      {open ? (
-        <pre className="max-h-40 overflow-auto border-t border-slate-100 bg-slate-50 px-4 py-2 font-mono text-[10px] leading-relaxed text-slate-700">
-          {json}
-        </pre>
-      ) : null}
+      {open ? <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-600">Verification hash {evaluation.evaluationHash.slice(0, 18)}</p> : null}
     </div>
   );
 }
