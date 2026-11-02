@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useDemo } from "../state/store";
 import { BaselineScreen } from "../screens/BaselineScreen";
 import { InstitutionScreen } from "../screens/InstitutionScreen";
@@ -54,7 +55,27 @@ export function Shell() {
   }
   return (
     <DemoDirector>
-    <div className="h-screen w-screen overflow-hidden flex flex-col bg-slate-50 text-slate-900">
+    <AuthenticatedShell />
+    </DemoDirector>
+  );
+}
+
+function AuthenticatedShell() {
+  const { state } = useDemo();
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  return (
+    <div
+      className="flex h-screen w-screen flex-col overflow-hidden bg-slate-50 text-slate-900"
+      style={{
+        opacity: shown ? 1 : 0,
+        transform: shown ? "scale(1)" : "scale(0.985)",
+        transition: "opacity 250ms ease, transform 250ms ease",
+      }}
+    >
       <div className="flex min-h-0 flex-1">
         <Sidebar />
         <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-slate-50 text-slate-900">
@@ -67,6 +88,5 @@ export function Shell() {
         </main>
       </div>
     </div>
-    </DemoDirector>
   );
 }

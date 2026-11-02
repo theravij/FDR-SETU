@@ -7,8 +7,10 @@ import { Btn, ScreenFrame, StatusBadge } from "../components/ui";
 
 export function InstitutionScreen() {
   const { state, uploadV2, navigate, setRole } = useDemo();
-  const [serial, setSerial] = useState("FDR/PNB/2024/88421");
-  const [amount, setAmount] = useState("3000000");
+  const demoCase = state.cases["DEMO-001"];
+  const seeded = demoCase.versions.find((item) => item.versionId === "V1");
+  const [serial, setSerial] = useState(seeded?.fields.referenceNumber ?? "");
+  const [amount, setAmount] = useState(String(seeded?.fields.observedAmountInr ?? ""));
   const [token, setToken] = useState("");
   const [note, setNote] = useState("");
   const [scanning, setScanning] = useState(false);
@@ -17,9 +19,9 @@ export function InstitutionScreen() {
   const rows = registerRows(Object.values(state.cases)).filter((row) =>
     state.role === "INST-01" ? row.institutionId === "INST-NITS" : true,
   );
-  const demo = state.cases["DEMO-001"];
-  const v1 = demo.versions.find((item) => item.versionId === "V1");
-  const required = v1?.fields.declaredAmountInr ?? 3_500_000;
+  const demo = demoCase;
+  const v1 = seeded;
+  const required = v1?.fields.declaredAmountInr ?? 0;
   const parsed = Number(amount.replace(/[^\d]/g, "")) || 0;
   const shortfall = required - parsed;
   const matched = parsed === required;
@@ -43,11 +45,7 @@ export function InstitutionScreen() {
   return (
     <ScreenFrame
       title="Institution Portal"
-      meta={
-        state.role === "INST-01"
-          ? "Signed in as INST-01 for National Institute of Technical Studies."
-          : "Officer view of every institution. A replacement instrument is submitted as INST-01."
-      }
+      meta={state.role === "INST-01" ? demo.institutionName : "All institutions · submit as INST-01"}
     >
       <div className="mb-4 grid gap-3 lg:grid-cols-5">
         <article data-demo-target="institution-compare" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-3">
@@ -93,8 +91,8 @@ export function InstitutionScreen() {
                 </div>
               </div>
             ) : null}
-            {scanning && !matched ? <p className="mt-1 text-[11px] text-slate-600">Verifying PNB CBS gateway token & extracting OCR principal...</p> : null}
-            {verified ? <p className="mt-2 rounded-md bg-emerald-50 px-2 py-1 text-[12px] font-semibold text-emerald-800">EV-BNK-202 Verified · SHA-256 Match</p> : null}
+            {scanning && !matched ? <p className="mt-1 text-[11px] text-slate-600">Verifying {v1?.fields.bankName ?? "bank"} gateway token...</p> : null}
+            {verified ? <p className="mt-2 rounded-md bg-emerald-50 px-2 py-1 text-[12px] font-semibold text-emerald-800">{token || "Gateway"} verified · SHA-256 match</p> : null}
           </div>
           <div className="mt-3">
             <Btn
@@ -111,12 +109,19 @@ export function InstitutionScreen() {
           </div>
         </article>
         <article className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm lg:col-span-2">
-          <h2 className="text-[13px] font-semibold text-slate-900">What the institution can do</h2>
-          <ul className="mt-2 space-y-1.5 text-[12px] leading-snug text-slate-600">
-            <li>Upload a replacement instrument for its own case.</li>
-            <li>See the discrepancy the review officer confirmed.</li>
-            <li>Cannot authorise release or lift a vigilance hold.</li>
-          </ul>
+          <h2 className="text-[13px] font-semibold text-slate-900">V1 rejected vs V2 typed</h2>
+          <div className="mt-3 grid gap-2">
+            <div className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-700">{v1?.versionId ?? "V1"} rejected</p>
+              <p className="font-mono text-[12px] text-slate-800">{v1?.fields.referenceNumber}</p>
+              <p className="font-mono text-[12px] font-semibold text-rose-800">{formatInr(v1?.fields.declaredAmountInr ?? 0)} form · {formatInr(v1?.fields.observedAmountInr ?? 0)} scan</p>
+            </div>
+            <div className={`rounded-lg border px-2 py-1.5 transition-colors duration-300 ${matched ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">V2 being typed</p>
+              <p className="font-mono text-[12px] text-slate-800">{serial || "Serial pending"}</p>
+              <p className="font-mono text-[12px] font-semibold text-slate-900">{formatInr(parsed)} · {token || "Token pending"}</p>
+            </div>
+          </div>
         </article>
       </div>
       <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">

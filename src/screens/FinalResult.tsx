@@ -1,6 +1,7 @@
 import { Copy, Landmark } from "lucide-react";
 import { formatInr, shortHash } from "../lib/format";
-import { CHECK_TITLES, formatCaseRef, formatReleaseScope, formatRuleVersion } from "../lib/labels";
+import { glanceRows, PILL_CLASS } from "../lib/caseView";
+import { formatCaseRef, formatRuleVersion } from "../lib/labels";
 import { useDemo } from "../state/store";
 import { StatusBadge } from "../components/ui";
 
@@ -11,6 +12,7 @@ export function FinalResult() {
   const officer = remark("OFFICER_OBSERVATION");
   const institution = remark("INSTITUTION_RESUBMISSION");
   const director = remark("DIRECTOR_REMARK");
+  const rows = glanceRows(snapshot);
   const v2 = snapshot.versions.find((item) => item.versionId === "V2");
   const copy = (value: string) => {
     void navigator.clipboard?.writeText(value);
@@ -43,21 +45,26 @@ export function FinalResult() {
           <section>
             <h3 className="text-[12px] font-semibold text-slate-900">Verification sign-off</h3>
             <ul className="mt-2 space-y-1.5">
-              {evaluation.checks.map((check) => (
-                <li key={check.id} className="flex items-center gap-2 text-[12px]">
-                  <span className="font-mono text-[10px] text-slate-500">{check.id}</span>
-                  <span className="min-w-0 flex-1 text-slate-800">{CHECK_TITLES[check.id]}</span>
-                  <StatusBadge status={check.status} />
+              {rows.map((row) => (
+                <li key={row.id} className="flex items-center gap-2 text-[12px]">
+                  <span className="font-mono text-[10px] text-slate-500">{row.id}</span>
+                  <span className="min-w-0 flex-1 text-slate-800">{row.title}</span>
+                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${PILL_CLASS[row.tone]}`}>{row.pill}</span>
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-[12px] text-slate-600">
-              {evaluation.blockers.length > 0 ? `Active blockers: ${evaluation.blockers.join("; ")}` : "No active blockers on the current version."}
-            </p>
-            {officer ? <p className="mt-2 text-[12px] text-slate-700"><span className="font-semibold">Officer note.</span> {officer}</p> : null}
-            {v2 ? <p className="mt-1 text-[12px] text-slate-700"><span className="font-semibold">V2 instrument.</span> {v2.fields.referenceNumber} · {formatInr(v2.fields.observedAmountInr)}</p> : null}
-            {institution ? <p className="mt-1 text-[12px] text-slate-700"><span className="font-semibold">Institution note.</span> {institution}</p> : null}
-            {director ? <p className="mt-1 text-[12px] text-slate-700"><span className="font-semibold">Director remark.</span> {director}</p> : null}
+            <div className="mt-3 flex flex-wrap gap-1">
+              <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${evaluation.blockers.length ? PILL_CLASS.rose : PILL_CLASS.emerald}`}>
+                {evaluation.blockers.length ? `${evaluation.blockers.length} blockers` : "No Blockers"}
+              </span>
+              <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${v2 ? PILL_CLASS.indigo : PILL_CLASS.slate}`}>
+                {v2 ? `${v2.versionId} ${formatInr(v2.fields.observedAmountInr)}` : `${evaluation.currentVersion} on file`}
+              </span>
+              <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${PILL_CLASS.slate}`}>PFMS Disbursement Scope</span>
+            </div>
+            {officer ? <p className="mt-2 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-[12px] text-indigo-950">{officer}</p> : null}
+            {institution ? <p className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[12px] text-slate-800">{institution}</p> : null}
+            {director ? <p className="mt-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[12px] text-emerald-950">{director}</p> : null}
           </section>
           <section className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <h3 className="text-[12px] font-semibold text-slate-900">Provenance and governance</h3>
@@ -65,14 +72,11 @@ export function FinalResult() {
             <HashRow label="Instrument" value={evaluation.currentVersion} />
             <HashRow label="Evaluation hash" value={shortHash(evaluation.evaluationHash, 18)} full={evaluation.evaluationHash} onCopy={copy} />
             <HashRow label="File sha256" value={shortHash(evaluation.fileSha256, 18)} full={evaluation.fileSha256} onCopy={copy} />
-            <p className="mt-2 text-[11px] text-slate-600">Next responsible officer: {evaluation.nextActor}</p>
-            <p className="mt-2 text-[12px] leading-snug text-slate-700" title={formatReleaseScope(evaluation.financialRelease)}>
-              Verification & Lien Clearance Record Only — Financial release is executed via external PFMS workflow.
-            </p>
+            <p className="mt-2 text-[11px] font-semibold text-slate-700">Next: {evaluation.nextActor}</p>
           </section>
         </div>
         <footer className="border-t border-slate-200 px-4 py-2 text-[12px] text-slate-500">
-          {evaluation.releaseAuthorised ? `Recorded by ${snapshot.release.by}` : "Decision is recorded from the workspace action."}
+          {evaluation.releaseAuthorised ? `Recorded by ${snapshot.release.by}` : "Awaiting the workspace action"}
         </footer>
       </article>
     </div>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { registerRows } from "../engine/register";
+import { roleChip } from "../lib/caseView";
 import { formatInr } from "../lib/format";
 import { formatCaseRef } from "../lib/labels";
 import { useDemo } from "../state/store";
@@ -35,7 +36,7 @@ export function QueueScreen() {
   return (
     <ScreenFrame
       title="Officer Queue"
-      meta="Triage open FDR and sanction-order files. Search by case, institution, or route."
+      meta={`${rows.length} files · ${formatInr(value)} under review`}
       actions={
         <div className="flex items-center gap-2">
           <input
@@ -76,7 +77,7 @@ export function QueueScreen() {
         <table className="w-full border-collapse text-left">
           <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
             <tr>
-              {["Case", "Institution", "Route", "Status", "Ageing", "Assignee", "Next", ""].map((heading) => (
+              {["Case", "Institution", "Route", "Status", "Ageing", "Assigned to", ""].map((heading) => (
                 <th key={heading} className="border-b border-slate-200 px-3 py-2 font-semibold">
                   {heading}
                 </th>
@@ -96,14 +97,8 @@ export function QueueScreen() {
                   <AgeBar days={row.ageingDays} />
                 </td>
                 <td className="border-b border-slate-100 px-3 py-2">
-                  <span className="inline-flex items-center gap-1.5 text-[12px]">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 font-mono text-[9px] font-semibold text-white">
-                      {row.assignee.slice(0, 2)}
-                    </span>
-                    <span className="font-mono">{row.assignee}</span>
-                  </span>
+                  <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-800">{roleChip(row.assignee)}</span>
                 </td>
-                <td className="border-b border-slate-100 px-3 py-2 font-mono text-[12px]">{row.nextActor}</td>
                 <td className="border-b border-slate-100 px-3 py-2">
                   <div className="flex justify-end gap-1">
                     <Btn
@@ -129,7 +124,7 @@ export function QueueScreen() {
             ))}
             {visible.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-3 py-6 text-center text-[12px] text-slate-500">
+                <td colSpan={7} className="px-3 py-6 text-center text-[12px] text-slate-500">
                   No cases match this search.
                 </td>
               </tr>

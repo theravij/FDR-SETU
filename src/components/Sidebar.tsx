@@ -4,12 +4,12 @@ import { ROLES } from "../engine/permissions";
 import { useDemo } from "../state/store";
 import type { RoleId, ScreenId } from "../types";
 
-const NAV: Array<{ id: ScreenId; label: string; hint: string; icon: ReactNode }> = [
-  { id: "workspace", label: "Case Workspace", hint: "Current file", icon: <Scale size={15} aria-hidden /> },
-  { id: "queue", label: "Officer Queue", hint: "Triage the register", icon: <List size={15} aria-hidden /> },
-  { id: "institution", label: "Institution Portal", hint: "Corrected instrument", icon: <Landmark size={15} aria-hidden /> },
-  { id: "reports", label: "Workload & Ageing", hint: "Open cases", icon: <BarChart3 size={15} aria-hidden /> },
-  { id: "baseline", label: "Baseline Comparison", hint: "Full recheck vs selective", icon: <GitCompare size={15} aria-hidden /> },
+const NAV: Array<{ id: ScreenId; label: string; icon: ReactNode }> = [
+  { id: "workspace", label: "Case Workspace", icon: <Scale size={15} aria-hidden /> },
+  { id: "queue", label: "Officer Queue", icon: <List size={15} aria-hidden /> },
+  { id: "institution", label: "Institution Portal", icon: <Landmark size={15} aria-hidden /> },
+  { id: "reports", label: "Workload & Ageing", icon: <BarChart3 size={15} aria-hidden /> },
+  { id: "baseline", label: "Baseline Comparison", icon: <GitCompare size={15} aria-hidden /> },
 ];
 
 export function Sidebar() {
@@ -27,7 +27,6 @@ export function Sidebar() {
             <p className="text-[15px] font-semibold leading-tight text-white">FDR Setu</p>
           </div>
         </div>
-        <p className="mt-3 text-[11px] leading-snug text-slate-400">Security deposit verification. A recorded decision does not move funds.</p>
       </div>
 
       <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-3" aria-label="Screens">
@@ -48,10 +47,7 @@ export function Sidebar() {
               }`}
             >
               <span className="shrink-0">{item.icon}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[13px] font-medium leading-tight">{item.label}</span>
-                <span className={`block text-[11px] ${active ? "text-indigo-200/70" : "text-slate-500"}`}>{item.hint}</span>
-              </span>
+              <span className="min-w-0 flex-1 text-[13px] font-medium leading-tight">{item.label}</span>
             </button>
           );
         })}

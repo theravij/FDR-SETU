@@ -34,7 +34,7 @@ export function ReportsScreen() {
   return (
     <ScreenFrame
       title="Workload & Ageing"
-      meta={`As of 2026-10-30. Open cases: ${open.length}. Mean open ageing: ${open.length ? Math.round(openAge / open.length) : 0} days.`}
+      meta={`${open.length} open · ${open.length ? Math.round(openAge / open.length) : 0}d mean age`}
     >
       <div data-demo-target="workload-board" className="grid gap-3 lg:grid-cols-3">
         <section className="rounded-xl border border-slate-200/80 bg-white shadow-sm">
@@ -61,25 +61,17 @@ export function ReportsScreen() {
         <ReportTable title="By route" pairs={countBy(rows, (row) => row.routeLabel)} />
         <ReportTable title="Open cases by assignee" pairs={countBy(open, (row) => row.assignee)} />
         <section className="rounded-xl border border-slate-200/80 bg-white shadow-sm lg:col-span-3">
-          <h2 className="border-b border-slate-200 px-3 py-2 text-[13px] font-semibold text-navy">
-            Due actions on 2026-10-30
-          </h2>
+          <h2 className="border-b border-slate-200 px-3 py-2 text-[13px] font-semibold text-navy">Maturity alerts</h2>
           {due.length === 0 ? (
-            <p className="px-3 py-2 text-[12px] text-slate-600">No maturity action is due inside the 30-day window.</p>
+            <p className="px-3 py-2 text-[12px] font-semibold text-slate-600">No maturity due</p>
           ) : (
-            <table className="w-full text-left">
-              <tbody>
-                {due.map((action) => (
-                  <tr key={`${action.caseId}-${action.id}`} className="border-t border-slate-100 text-[12px]">
-                    <td className="px-3 py-1.5 font-mono">{formatCaseRef(action.caseId)}</td>
-                    <td className="px-3 py-1.5">{action.id === "MAT-01" ? "Maturity review" : action.id}</td>
-                    <td className="px-3 py-1.5">{action.responsibleRole}</td>
-                    <td className="px-3 py-1.5">{action.dueOn}</td>
-                    <td className="px-3 py-1.5 text-slate-700">{action.nextAction}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="flex flex-wrap gap-2 p-3">
+              {due.map((action) => (
+                <span key={`${action.caseId}-${action.id}`} className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-950">
+                  {formatCaseRef(action.caseId)} · Due {action.dueOn} · {action.responsibleRole}
+                </span>
+              ))}
+            </div>
           )}
         </section>
         <section className="rounded-xl border border-slate-200/80 bg-white shadow-sm lg:col-span-3">

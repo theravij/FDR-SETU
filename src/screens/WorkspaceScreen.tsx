@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Landmark } from "lucide-react";
-import { ageingDays, formatInr, routeLabel } from "../lib/format";
+import { activeVersion, amountGap, glanceRows, PILL_CLASS, roleChip } from "../lib/caseView";
+import { formatInr, routeLabel } from "../lib/format";
 import { formatCaseRef } from "../lib/labels";
 import { useDemo } from "../state/store";
 import type { CaseSnapshot, RoleId, Step, WorkspaceTab } from "../types";
@@ -9,7 +10,7 @@ import { Clearances } from "./Clearances";
 import { FinalResult } from "./FinalResult";
 import { ProvenanceDiff } from "./ProvenanceDiff";
 import { RecheckMatrix } from "./RecheckMatrix";
-import { Btn, StatusBadge } from "../components/ui";
+import { Btn } from "../components/ui";
 
 const STEPS: Array<{ step: Step; label: string }> = [
   { step: 1, label: "1. V1 Intake" },
@@ -23,10 +24,14 @@ export function WorkspaceScreen() {
   const demo = useDemo();
   const { state, evaluation, navigate, setStep, setRole } = demo;
   const snapshot = state.cases[state.caseId];
-  const delta = evaluation.observedAmountInr - evaluation.declaredAmountInr;
-  const matched = delta === 0;
-  const locked = evaluation.selectiveRecheck.preserved.length;
-  const recomputed = evaluation.selectiveRecheck.recomputed.length;
+  const current = activeVersion(snapshot);
+  const declared = current?.fields.declaredAmountInr ?? evaluation.declaredAmountInr;
+  const observed = current?.fields.observedAmountInr ?? evaluation.observedAmountInr;
+  const shortfall = amountGap(declared, observed);
+  const rows = glanceRows(snapshot);
+  const locked = rows.filter((row) => row.kind === "locked").length;
+  const reverified = rows.filter((row) => row.kind === "reverified").length;
+  const saved = rows.length ? Math.round((locked / rows.length) * 100) : 0;
   const [officerNote, setOfficerNote] = useState("");
   const [directorNote, setDirectorNote] = useState("");
   const action = primaryAction(demo, officerNote, directorNote);
@@ -45,9 +50,7 @@ export function WorkspaceScreen() {
           <span className="shrink-0 whitespace-nowrap rounded-md bg-slate-950 px-2 py-1 font-mono text-[11px] font-semibold text-white">{formatCaseRef(snapshot.caseId)}</span>
           <h1 className="min-w-0 truncate text-[14px] font-semibold text-slate-900">{snapshot.institutionName}</h1>
           <span className="shrink-0 whitespace-nowrap rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">{routeLabel(snapshot.route)}</span>
-          <span className="shrink-0">
-            <StatusBadge status={evaluation.releaseAuthorised ? "RELEASED" : evaluation.releaseReady ? "READY FOR RELEASE" : evaluation.statusLabel} />
-          </span>
+          <HeaderBadge snapshot={snapshot} step={state.step} shortfall={shortfall} releaseReady={evaluation.releaseReady} releaseAuthorised={evaluation.releaseAuthorised} />
           {state.step >= 5 && !evaluation.releaseAuthorised ? (
             <input
               data-demo-target="director-note-input"
@@ -76,7 +79,7 @@ export function WorkspaceScreen() {
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
           {snapshot.caseId === "DEMO-001" ? (
-            <div className="flex shrink-0 gap-1" role="group" aria-label="Case lifecycle">
+            <div className="flex shrink-0 gap-1" role="group" aria-label="Regulation Bureau lifecycle">
               {STEPS.map((item) => {
                 const selected = state.step === item.step;
                 const done = state.step > item.step;
@@ -100,15 +103,17 @@ export function WorkspaceScreen() {
               })}
             </div>
           ) : null}
-          <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] tabular-nums text-slate-600">
-            <span>{matched ? `Declared vs scan: ${formatInr(evaluation.declaredAmountInr)} Matched` : `Declared vs scan: ${formatInr(evaluation.declaredAmountInr)} / ${formatInr(evaluation.observedAmountInr)} (${formatInr(delta)})`}</span>
-            <span className="text-slate-300">|</span>
-            <span>Recheck scope: {locked} locked · {recomputed} recomputed</span>
-            <span className="text-slate-300">|</span>
-            <span>Clearances: {snapshot.vigilanceHold ? "Hold" : snapshot.lienConfirmed ? "Lien Confirmed" : "Lien open"}</span>
-            <span className="text-slate-300">|</span>
-            <span>SLA: {ageingDays(snapshot.openedOn)}d Open</span>
-          </p>
+          <LiveBar
+            snapshot={snapshot}
+            step={state.step}
+            shortfall={shortfall}
+            observed={observed}
+            locked={locked}
+            reverified={reverified}
+            saved={saved}
+            releaseAuthorised={evaluation.releaseAuthorised}
+            maturityDue={evaluation.actions[0]?.dueOn}
+          />
         </div>
       </header>
 
@@ -149,6 +154,116 @@ export function WorkspaceScreen() {
   );
 }
 
+function HeaderBadge({
+  snapshot,
+  step,
+  shortfall,
+  releaseReady,
+  releaseAuthorised,
+}: {
+  snapshot: CaseSnapshot;
+  step: Step;
+  shortfall: number;
+  releaseReady: boolean;
+  releaseAuthorised: boolean;
+}) {
+  const v2 = snapshot.currentVersionId !== "V1";
+  const rejectedV1 = shortfall > 0 || (snapshot.caseId === "DEMO-001" && step <= 2 && !v2);
+  let text = "In review";
+  let tone: keyof typeof PILL_CLASS = "slate";
+  if (snapshot.vigilanceHold) {
+    text = "Vigilance Hold · VIG-22";
+    tone = "amber";
+  } else if (rejectedV1) {
+    text = `Shortfall: -${formatInr(shortfall)} · Needs V2`;
+    tone = "rose";
+  } else if (v2 && (step === 3 || step === 4)) {
+    text = "Selective Recheck Active";
+    tone = "indigo";
+  } else if (releaseAuthorised) {
+    text = "RELEASED — Verified";
+    tone = "emerald";
+  } else if (releaseReady && (step >= 5 || snapshot.caseId !== "DEMO-001")) {
+    text = "Ready for Director Sign-Off";
+    tone = "emerald";
+  }
+  return <span className={`shrink-0 whitespace-nowrap rounded-md border px-1.5 py-0.5 text-[10px] font-semibold transition-colors duration-300 ${PILL_CLASS[tone]}`}>{text}</span>;
+}
+
+function LiveBar({
+  snapshot,
+  step,
+  shortfall,
+  observed,
+  locked,
+  reverified,
+  saved,
+  releaseAuthorised,
+  maturityDue,
+}: {
+  snapshot: CaseSnapshot;
+  step: Step;
+  shortfall: number;
+  observed: number;
+  locked: number;
+  reverified: number;
+  saved: number;
+  releaseAuthorised: boolean;
+  maturityDue?: string;
+}) {
+  const current = activeVersion(snapshot);
+  const bank = current?.fields.bankName ?? "Bank";
+  const version = current?.versionId ?? "V1";
+  const declared = current?.fields.declaredAmountInr ?? 0;
+  const v2 = version !== "V1";
+  const evidence = snapshot.bankEvidence.filter((item) => item.coversVersionId === version).at(-1);
+  const ocr = declared > 0 ? Math.round((Math.min(observed, declared) / declared) * 100) : 0;
+  let dot = "bg-slate-400";
+  let headline = `${bank} ${version} is in review`;
+  let next = `${roleChip("RO-104")} → Review file`;
+  if (snapshot.vigilanceHold) {
+    dot = "bg-amber-500";
+    headline = `${bank} ${version} is on vigilance hold`;
+    next = `${roleChip("VIG-22")} → Lift hold`;
+  } else if (releaseAuthorised) {
+    dot = "bg-emerald-500";
+    headline = `${bank} ${version} record is verified`;
+    next = "✓ Verified & Cleared";
+  } else if (shortfall > 0 && step <= 1) {
+    dot = "bg-rose-500";
+    headline = `${bank} ${version} scan is short ${formatInr(shortfall)}`;
+    next = `${roleChip("RO-104")} → Flag Discrepancy`;
+  } else if (shortfall > 0 || (snapshot.caseId === "DEMO-001" && step === 2 && !v2)) {
+    dot = "bg-amber-500";
+    headline = `${bank} ${version} rejected, awaiting V2 upload`;
+    next = `${roleChip("INST-01")} → Upload V2 FDR`;
+  } else if (v2 && (step === 3 || step === 4)) {
+    dot = "bg-indigo-500";
+    headline = `${bank} ${version}: ${locked} locked, ${reverified} recomputed`;
+    next = `${roleChip("RO-104")} → Confirm Recheck`;
+  } else if (step >= 5) {
+    dot = "bg-emerald-500";
+    headline = `${bank} ${version} ${formatInr(observed)} awaits director`;
+    next = `${roleChip("DIR-01")} → Authorise Release`;
+  }
+  return (
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+      <span className={`h-2 w-2 shrink-0 animate-pulse rounded-full ${dot}`} />
+      <p className="min-w-0 text-[12px] font-semibold text-slate-900">{headline}</p>
+      <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-700 transition duration-200 hover:-translate-y-0.5 hover:shadow-sm">{next}</span>
+      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${PILL_CLASS.indigo}`}>T1 {evidence ? evidence.id : "Pending"}</span>
+      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${snapshot.identityConfirmed && snapshot.lienConfirmed ? PILL_CLASS.emerald : PILL_CLASS.amber}`}>
+        T2 {snapshot.identityConfirmed ? "Identity" : "Identity open"} · {snapshot.lienConfirmed ? "Lien" : "Lien open"}
+      </span>
+      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${ocr === 100 ? PILL_CLASS.emerald : PILL_CLASS.rose}`}>T3 OCR {ocr}%</span>
+      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${maturityDue ? PILL_CLASS.amber : PILL_CLASS.slate}`}>
+        {maturityDue ? `Due ${maturityDue}` : `Matures ${current?.fields.maturityOrValueDate ?? "—"}`}
+      </span>
+      {locked > 0 ? <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${PILL_CLASS.emerald}`}>{locked} kept · {reverified} redone · {saved}% saved</span> : null}
+    </div>
+  );
+}
+
 function Certificate({
   snapshot,
   step,
@@ -182,7 +297,7 @@ function Certificate({
             <Landmark size={14} aria-hidden />
           </span>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-900">Punjab National Bank</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-900">{preview.fields.bankName}</p>
             <p className="font-mono text-[12px] tabular-nums text-slate-700">{preview.fields.referenceNumber}</p>
           </div>
         </div>
@@ -266,7 +381,7 @@ function primaryAction(demo: ReturnType<typeof useDemo>, officerNote: string, di
   }
   if (snapshot.caseId === "DEMO-001" && state.step <= 1) {
     return {
-      label: "Flag ₹5L Discrepancy & Return to Institution",
+      label: `Flag ${formatInr(amountGap(activeVersion(snapshot)?.fields.declaredAmountInr ?? 0, activeVersion(snapshot)?.fields.observedAmountInr ?? 0))} Discrepancy & Return to Institution`,
       role: "RO-104",
       target: "step1-flag-btn",
       run: () => confirmV1(officerNote),

@@ -1,9 +1,8 @@
 import { buildDemo001 } from "../data/cases";
 import { evaluateCase } from "../engine/evaluateCase";
-import { statusText } from "../lib/format";
-import { CHECK_TITLES } from "../lib/labels";
+import { CHECK_NAMES } from "../lib/caseView";
 import { ScreenFrame } from "../components/ui";
-import type { CheckId, CheckStatus } from "../types";
+import type { CheckId } from "../types";
 
 const MINUTES = 12;
 
@@ -11,21 +10,21 @@ export function BaselineScreen() {
   const snapshot = buildDemo001(3);
   const selective = evaluateCase(snapshot);
   const rows = selective.checks.map((check) => {
-    const baseline: CheckStatus = "RECHECK_REQUIRED";
     return {
       id: check.id as CheckId,
-      title: CHECK_TITLES[check.id],
-      baseline,
+      title: CHECK_NAMES[check.id],
       selective: check.status,
     };
   });
   const baselineOpen = rows.length;
   const selectiveOpen = selective.selectiveRecheck.invalidated.length + selective.selectiveRecheck.recomputed.length;
+  const kept = Math.max(0, baselineOpen - selectiveOpen);
+  const saved = baselineOpen ? Math.round((kept / baselineOpen) * 100) : 0;
 
   return (
     <ScreenFrame
       title="Baseline Comparison"
-      meta="National Institute of Technical Studies at the moment the replacement instrument is uploaded. A full recheck reopens every check. Selective recheck reopens only the changed bank confirmation."
+      meta={`${baselineOpen} Checks vs ${selectiveOpen} Checks = ${saved}% Re-verification Saved`}
     >
       <div className="mb-3 grid grid-cols-3 gap-3">
         <article className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
@@ -46,7 +45,7 @@ export function BaselineScreen() {
           <table className="w-full text-left">
             <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
               <tr>
-                {["Check", "Baseline: any new version reopens all", "FDR Setu: reopen only a changed scope"].map((heading) => (
+                {["Check", "Full recheck", "Selective"].map((heading) => (
                   <th key={heading} className="border-b border-slate-200 px-3 py-2 font-semibold">
                     {heading}
                   </th>
@@ -60,39 +59,32 @@ export function BaselineScreen() {
                     <span className="font-mono text-[12px] font-semibold text-navy">{row.id}</span>
                     <span className="mt-0.5 block text-[12px] text-slate-700">{row.title}</span>
                   </td>
-                  <td className="px-3 py-2 text-[12px] font-semibold text-crimson">{statusText(row.baseline)}</td>
-                  <td className="px-3 py-2 text-[12px] font-semibold text-navy">{statusText(row.selective)}</td>
+                  <td className="px-3 py-2 text-[12px] font-semibold text-rose-700">Reopen</td>
+                  <td className="px-3 py-2 text-[12px] font-semibold text-slate-900">{row.selective === "PRESERVED_CONFIRMED" ? "Locked" : row.selective === "RECHECK_REQUIRED" ? "Reopen" : "Kept"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </section>
         <section className="col-span-2 rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
-          <h2 className="text-[13px] font-semibold text-navy">What the officer must redo</h2>
+          <h2 className="text-[13px] font-semibold text-navy">Measurable impact</h2>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full bg-emerald-500 transition-all duration-300" style={{ width: `${saved}%` }} />
+          </div>
           <dl className="mt-3 space-y-2 text-[12px]">
             <div className="flex justify-between border-b border-slate-100 pb-2">
-              <dt>Checks reopened</dt>
-              <dd className="font-semibold tabular-nums">
-                {baselineOpen} baseline · {selectiveOpen} selective
-              </dd>
+              <dt>Checks compared</dt>
+              <dd className="font-semibold tabular-nums">{baselineOpen} vs {selectiveOpen}</dd>
             </div>
             <div className="flex justify-between border-b border-slate-100 pb-2">
-              <dt>Confirmations kept</dt>
-              <dd className="font-semibold tabular-nums">0 baseline · {selective.selectiveRecheck.preserved.length} selective</dd>
+              <dt>Kept from prior version</dt>
+              <dd className="font-semibold tabular-nums">{kept}</dd>
             </div>
             <div className="flex justify-between border-b border-slate-100 pb-2">
-              <dt>Officer minutes at {MINUTES} per reopened check</dt>
-              <dd className="font-semibold tabular-nums">
-                {baselineOpen * MINUTES} · {selectiveOpen * MINUTES}
-              </dd>
+              <dt>Minutes at {MINUTES} each</dt>
+              <dd className="font-semibold tabular-nums">{baselineOpen * MINUTES} → {selectiveOpen * MINUTES}</dd>
             </div>
           </dl>
-          <ol className="mt-3 list-decimal space-y-1 pl-4 text-[12px] leading-snug text-slate-700">
-            <li>Each check names the fields it reads.</li>
-            <li>A new file hash alone changes nothing.</li>
-            <li>A new version reopens a check only when those fields, or evidence bound to them, change.</li>
-            <li>Evidence for an earlier version stays on the file and is marked historical.</li>
-          </ol>
         </section>
       </div>
     </ScreenFrame>

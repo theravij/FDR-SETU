@@ -128,12 +128,18 @@ export function LoginScreen({ onSignedIn }: { onSignedIn: (role: RoleId) => void
 
     const toggle = $("tg");
     const password = $("pw");
+    let revealed = false;
+    const paintSecurity = () => {
+      if (!(password instanceof HTMLInputElement)) return;
+      const mask = password.value.length > 0 && !revealed;
+      password.style.setProperty("-webkit-text-security", mask ? "disc" : "none");
+    };
     const onToggle = () => {
       if (!(password instanceof HTMLInputElement) || !(toggle instanceof HTMLButtonElement)) return;
-      const show = password.type === "password";
-      password.type = show ? "text" : "password";
-      toggle.textContent = show ? "Hide" : "Show";
-      toggle.setAttribute("aria-pressed", String(show));
+      revealed = !revealed;
+      toggle.textContent = revealed ? "Hide" : "Show";
+      toggle.setAttribute("aria-pressed", String(revealed));
+      paintSecurity();
     };
 
     const setErr = (key: string, message: string) => {
@@ -147,8 +153,8 @@ export function LoginScreen({ onSignedIn }: { onSignedIn: (role: RoleId) => void
     };
 
     const form = $("f");
-    const onSubmit = (event: Event) => {
-      event.preventDefault();
+    const onSubmit = (event?: Event) => {
+      event?.preventDefault();
       if (!(password instanceof HTMLInputElement)) return;
       const accountInput = $("id");
       const status = $("st");
@@ -179,6 +185,12 @@ export function LoginScreen({ onSignedIn }: { onSignedIn: (role: RoleId) => void
     const onInput = (event: Event) => {
       const target = event.currentTarget;
       if (target instanceof HTMLInputElement && (target.id === "id" || target.id === "pw")) setErr(target.id, "");
+      if (target === password) paintSecurity();
+    };
+    const onEnter = (event: Event) => {
+      if (!(event instanceof KeyboardEvent) || event.key !== "Enter") return;
+      event.preventDefault();
+      onSubmit(event);
     };
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -209,10 +221,13 @@ export function LoginScreen({ onSignedIn }: { onSignedIn: (role: RoleId) => void
     phone.addEventListener("change", fit);
     window.addEventListener("resize", fit);
     if (document.fonts) void document.fonts.ready.then(() => { if (!cancelled) chips(); });
+    paintSecurity();
     toggle?.addEventListener("click", onToggle);
-    form?.addEventListener("submit", onSubmit);
+    $("go")?.addEventListener("click", onSubmit);
     $("id")?.addEventListener("input", onInput);
+    $("id")?.addEventListener("keydown", onEnter);
     password?.addEventListener("input", onInput);
+    password?.addEventListener("keydown", onEnter);
     forgot?.addEventListener("click", onForgot);
     if (!reduced && form) {
       form.addEventListener("pointermove", onPointer);
@@ -225,9 +240,11 @@ export function LoginScreen({ onSignedIn }: { onSignedIn: (role: RoleId) => void
       phone.removeEventListener("change", fit);
       window.removeEventListener("resize", fit);
       toggle?.removeEventListener("click", onToggle);
-      form?.removeEventListener("submit", onSubmit);
+      $("go")?.removeEventListener("click", onSubmit);
       $("id")?.removeEventListener("input", onInput);
+      $("id")?.removeEventListener("keydown", onEnter);
       password?.removeEventListener("input", onInput);
+      password?.removeEventListener("keydown", onEnter);
       forgot?.removeEventListener("click", onForgot);
       form?.removeEventListener("pointermove", onPointer);
       form?.removeEventListener("pointerleave", onLeave);

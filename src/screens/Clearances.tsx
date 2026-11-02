@@ -9,35 +9,31 @@ export function Clearances() {
   const tests = [
     {
       title: "Cosmetic PDF rescan",
-      copy: "Replaces the file sha256 of the current instrument and leaves the substantive hash alone. Expect zero checks invalidated and the same evaluationHash.",
+      copy: "File hash only. Checks stay.",
       action: "Run rescan",
       onClick: demo.cosmeticRescan,
     },
     {
       title: "RBAC release attempt",
-      copy: "Submits the current evaluationHash for authorisation. RO-104, VIG-22 and INST-01 receive HTTP 403. DIR-01 is refused with HTTP 409 until the case is ready.",
+      copy: "Role gate on this hash.",
       action: `Attempt release as ${state.role}`,
       onClick: () => demo.attemptRelease(),
     },
     {
       title: "Bank gateway outage",
-      copy: state.gatewayOutage
-        ? "Gateway is OUTAGE. Record an attested branch letter. It covers the current version at T4 and does not rewrite EV-BNK-101."
-        : "Gateway is online. Mark an outage first, then record the manual letter. The letter stays honest T4 provenance.",
+      copy: state.gatewayOutage ? "Record a T4 letter." : "Mark gateway outage.",
       action: state.gatewayOutage ? "Record manual letter" : "Mark gateway outage",
       onClick: state.gatewayOutage ? demo.recordManualLetter : demo.toggleGateway,
     },
     {
       title: `Idempotent escalation · ${maskOperationalText("DEMO-005")}`,
-      copy: demo005.escalation
-        ? `${maskOperationalText(demo005.escalation.id)} is already open. A second request must return that id and must not add an audit event.`
-        : `${maskOperationalText("DEMO-005")} has an open amount discrepancy and no escalation. The first request opens ${maskOperationalText("ESC-DEMO-005")}. The second returns the same id.`,
+      copy: demo005.escalation ? "Escalation already open." : "Open one escalation.",
       action: demo005.escalation ? "Repeat escalation" : `Escalate ${maskOperationalText("DEMO-005")}`,
       onClick: demo.escalateDemo005,
     },
     {
       title: "Stale evaluationHash",
-      copy: "Freezes the current hash, applies a concurrent institution edit, then asks DIR-01 to release against the frozen hash. Expect HTTP 412. Check statuses need not change.",
+      copy: "Block a stale hash.",
       action: "Run stale-hash block",
       onClick: demo.runStaleHashBlock,
     },
@@ -91,8 +87,7 @@ export function Clearances() {
       </div>
       {state.notice ? (
         <p className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] leading-snug text-slate-800">
-          <span className="font-semibold">{maskOperationalText(state.notice.title)}.</span> {maskOperationalText(state.notice.body)}
-          {state.frozenHash ? ` Frozen hash ${state.frozenHash.slice(0, 18)}.` : ""}
+          <span className="font-semibold">{maskOperationalText(state.notice.title)}</span>
         </p>
       ) : null}
     </div>

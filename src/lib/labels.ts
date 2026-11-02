@@ -37,10 +37,10 @@ export function maskOperationalText(text: string): string {
 }
 
 export const CHECK_TITLES: Record<CheckId, string> = {
-  "CHK-01": "Principal Amount Agreement",
-  "CHK-02": "Bank Gateway Confirmation",
-  "CHK-03": "Institution Identity Verification",
-  "CHK-04": "AICTE Lien & Pledge Clause",
+  "CHK-01": "Principal Amount",
+  "CHK-02": "Bank Gateway CBS",
+  "CHK-03": "Institution Identity",
+  "CHK-04": "AICTE Lien Clause",
 };
 
 export const CHECK_LABELS: Record<CheckId, string> = {
