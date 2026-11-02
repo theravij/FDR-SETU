@@ -64,6 +64,9 @@ export function DemoDirector({ children }: { children: ReactNode }) {
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
   const t0 = useRef(0);
+  const voiceRef = useRef<HTMLAudioElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const displayStreamRef = useRef<MediaStream | null>(null);
 
   const setCursor = (next: { x: number; y: number }) => {
     pointRef.current = next;
@@ -81,13 +84,33 @@ export function DemoDirector({ children }: { children: ReactNode }) {
     );
   };
 
+  const stopVoice = () => {
+    const audio = voiceRef.current;
+    voiceRef.current = null;
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.removeAttribute("src");
+      audio.load();
+    }
+    const ctx = audioCtxRef.current;
+    audioCtxRef.current = null;
+    if (ctx && ctx.state !== "closed") void ctx.close();
+  };
+
   const stopRecorder = (download: boolean) => {
     const active = recorder.current;
     recorder.current = null;
-    if (!active) return;
+    const display = displayStreamRef.current;
+    displayStreamRef.current = null;
+    if (!active) {
+      display?.getTracks().forEach((track) => track.stop());
+      return;
+    }
     const save = download;
     active.onstop = () => {
       active.stream.getTracks().forEach((track) => track.stop());
+      display?.getTracks().forEach((track) => track.stop());
       if (!save || chunks.current.length === 0) return;
       const blob = new Blob(chunks.current, { type: active.mimeType || "video/webm" });
       const url = URL.createObjectURL(blob);
@@ -99,7 +122,23 @@ export function DemoDirector({ children }: { children: ReactNode }) {
     };
     if (active.state === "recording") active.requestData();
     if (active.state !== "inactive") active.stop();
-    else active.stream.getTracks().forEach((track) => track.stop());
+    else {
+      active.stream.getTracks().forEach((track) => track.stop());
+      display?.getTracks().forEach((track) => track.stop());
+    }
+  };
+
+  const preloadVoice = async () => {
+    const audio = new Audio("/voiceover.mp3");
+    audio.preload = "auto";
+    audio.crossOrigin = "anonymous";
+    await new Promise<void>((resolve, reject) => {
+      audio.addEventListener("canplaythrough", () => resolve(), { once: true });
+      audio.addEventListener("error", () => reject(new Error("voiceover failed to load")), { once: true });
+      audio.load();
+    });
+    voiceRef.current = audio;
+    return audio;
   };
 
   const abort = useCallback((download = false) => {
@@ -108,6 +147,7 @@ export function DemoDirector({ children }: { children: ReactNode }) {
     setVisible(false);
     setFading(false);
     setPressed(false);
+    stopVoice();
     stopRecorder(download);
   }, []);
 
@@ -216,8 +256,19 @@ export function DemoDirector({ children }: { children: ReactNode }) {
     cancel.current = false;
     setFading(false);
     setVisible(true);
-    t0.current = performance.now();
     const api = () => demoRef.current;
+    const audio = voiceRef.current ?? (await preloadVoice());
+    if (cancel.current) {
+      running.current = false;
+      return;
+    }
+    audio.currentTime = 0;
+    t0.current = performance.now();
+    try {
+      await audio.play();
+    } catch {
+      /* autoplay may be blocked; cursor timeline still runs */
+    }
 
     const scene = async (index: number, work: () => Promise<void>) => {
       if (cancel.current) return;
@@ -327,13 +378,23 @@ export function DemoDirector({ children }: { children: ReactNode }) {
   const record = useCallback(async () => {
     if (running.current) return;
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
+      const audio = await preloadVoice();
+      const display = await navigator.mediaDevices.getDisplayMedia({
         video: { frameRate: 60 },
         audio: false,
         preferCurrentTab: true,
       } as DisplayMediaStreamOptions & { preferCurrentTab?: boolean });
+      displayStreamRef.current = display;
+      const ctx = new AudioContext();
+      audioCtxRef.current = ctx;
+      if (ctx.state === "suspended") await ctx.resume();
+      const source = ctx.createMediaElementSource(audio);
+      const dest = ctx.createMediaStreamDestination();
+      source.connect(dest);
+      source.connect(ctx.destination);
+      const mixed = new MediaStream([...display.getVideoTracks(), ...dest.stream.getAudioTracks()]);
       const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm";
-      const media = new MediaRecorder(stream, { mimeType: mime });
+      const media = new MediaRecorder(mixed, { mimeType: mime });
       chunks.current = [];
       media.ondataavailable = (event) => {
         if (event.data.size > 0) chunks.current.push(event.data);
@@ -342,12 +403,16 @@ export function DemoDirector({ children }: { children: ReactNode }) {
       media.start();
       await sleep(600);
       if (cancel.current) {
+        stopVoice();
         stopRecorder(false);
         return;
       }
       await runWalk(true);
     } catch {
+      stopVoice();
       recorder.current = null;
+      displayStreamRef.current?.getTracks().forEach((track) => track.stop());
+      displayStreamRef.current = null;
     }
   }, [runWalk]);
 
