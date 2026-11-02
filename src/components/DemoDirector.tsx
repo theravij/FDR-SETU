@@ -3,24 +3,26 @@ import { useDemo } from "../state/store";
 
 type CursorKind = "arrow" | "hand" | "ibeam";
 
-const GLIDE_MS = 650;
-const HOVER_MS = 200;
-const PRESS_MS = 90;
-const SELECT_MS = 220;
-const CLEAR_MS = 120;
-const CHAR_MS = 55;
-const PUNCT_MS = 95;
-const CORRECT_MS = 320;
-const AFTER_TYPE_MS = 200;
-/** Anchors from the locked physics model + 400ms breathing buffer between scenes. */
+/** Scaled human physics to fit the continuous 55.0s voiceover. */
+const GLIDE_MS = 420;
+const HOVER_MS = 120;
+const PRESS_MS = 70;
+const SELECT_MS = 160;
+const CLEAR_MS = 100;
+const CHAR_MS = 36;
+const PUNCT_MS = 60;
+const CORRECT_MS = 220;
+const AFTER_TYPE_MS = 80;
+const TOTAL_MS = 55_000;
+/** Scene anchors: each start is the previous scene’s end on the 55.0s timeline. */
 const SCENE_START_MS = [
-  0, // 1 Login
-  10_860, // 2 Queue
-  16_120, // 3 V1 Flag
-  24_320, // 4 Institution V2
-  36_740, // 5 Selective Recheck
-  47_980, // 6 Director Certificate
-  55_705, // 7 Workload & Baseline
+  0, // 1 Login → 9.0s
+  9_000, // 2 Queue → 14.5s
+  14_500, // 3 V1 Flag → 23.0s
+  23_000, // 4 Institution V2 → 36.5s
+  36_500, // 5 Selective Recheck → 46.5s
+  46_500, // 6 Director Certificate → 52.5s
+  52_500, // 7 Workload & Baseline → 55.0s
 ] as const;
 
 function sleep(ms: number): Promise<void> {
@@ -282,25 +284,24 @@ export function DemoDirector({ children }: { children: ReactNode }) {
       api().reset();
       api().signOut();
       api().dismissNotice();
-      await sleep(650);
+      await sleep(400);
       setCursor({ x: 280, y: 460 });
       await moveTo("#f");
       await humanType('[data-demo-target="login-id"]', "AICTE-RO-104", { replace: true });
       await humanType('[data-demo-target="login-pw"]', "Setu@2026#Verify", { replace: true });
       await glideClick('[data-demo-target="login-toggle-pw"]');
-      await sleep(320);
+      await sleep(280);
       await glideClick('[data-demo-target="login-toggle-pw"]');
       await glideClick('[data-demo-target="login-remember"]');
       await glideClick('[data-demo-target="login-submit"]');
-      // LoginScreen: Checking… 650ms + transition 450ms.
-      await sleep(1100);
+      // Login transition (Checking… + open) is absorbed by waitUntil(9_000) for Scene 2.
     });
 
     await scene(1, async () => {
       await humanType('[data-demo-target="queue-search"]', "National Institute");
       await glideClick('[data-demo-target="open-DEMO-001"]');
       await moveTo('[data-demo-target="fdr-certificate"]');
-      await sleep(1100);
+      await sleep(600);
     });
 
     await scene(2, async () => {
@@ -311,7 +312,7 @@ export function DemoDirector({ children }: { children: ReactNode }) {
         { correctOnce: true },
       );
       await glideClick('[data-demo-target="step1-flag-btn"]');
-      await sleep(900);
+      await sleep(500);
     });
 
     await scene(3, async () => {
@@ -319,55 +320,55 @@ export function DemoDirector({ children }: { children: ReactNode }) {
         api().setRole("INST-01");
         api().navigate({ screen: "institution" });
       });
-      await sleep(900);
+      await sleep(450);
       await humanType('[data-demo-target="inst-fdr-input"]', "FDR/PNB/2025/91007", { replace: true });
       await humanType('[data-demo-target="inst-amount-input"]', "3500000", { replace: true });
       await humanType('[data-demo-target="inst-token-input"]', "PNB-GW-2026-44802");
       await glideClick('[data-demo-target="inst-ocr-scan"]');
       await sleep(650);
       await glideClick('[data-demo-target="inst-submit-v2"]');
-      await sleep(1000);
+      await sleep(400);
     });
 
     await scene(4, async () => {
       api().setRole("RO-104");
       api().navigate({ screen: "workspace", tab: "recheck", caseId: "DEMO-001" });
       await moveTo('[data-demo-target="check-row-CHK-03"]');
-      await sleep(1100);
+      await sleep(600);
       await moveTo('[data-demo-target="check-row-CHK-04"]');
       await glideClick('[data-demo-target="check-row-CHK-01"]');
       await glideClick('[data-demo-target="check-row-CHK-02"]');
       await glideClick('[data-demo-target="tab-provenance"]');
-      await sleep(1000);
+      await sleep(550);
       await glideClick('[data-demo-target="tab-clearances"]');
-      await sleep(900);
+      await sleep(400);
       await glideClick('[data-demo-target="tab-audit"]');
-      await sleep(900);
+      await sleep(400);
       await glideClick('[data-demo-target="step4-confirm-btn"]');
     });
 
     await scene(5, async () => {
       await humanType('[data-demo-target="director-note-input"]', "Selective recheck verified on V2. Cleared for record.");
       await glideClick('[data-demo-target="step5-authorise-btn"]');
-      await sleep(120);
+      await sleep(80);
       await moveTo('[data-demo-target="verification-seal"]');
-      await sleep(1200);
+      await sleep(450);
     });
 
     await scene(6, async () => {
-      await glideClick('[data-demo-target="nav-reports"]');
+      api().navigate({ screen: "reports" });
       await moveTo('[data-demo-target="workload-board"]');
-      await sleep(900);
-      await glideClick('[data-demo-target="nav-baseline"]');
+      await sleep(280);
+      api().navigate({ screen: "baseline" });
       await moveTo('[data-demo-target="baseline-compare"]');
-      await sleep(1000);
+      await sleep(280);
       await glideClick('[data-demo-target="nav-workspace"]', () => api().navigate({ screen: "workspace", tab: "result", caseId: "DEMO-001" }));
-      await sleep(900);
+      await waitUntil(TOTAL_MS - 280);
+      setFading(true);
+      await waitUntil(TOTAL_MS);
     });
 
     if (!cancel.current) {
-      setFading(true);
-      await sleep(420);
       if (import.meta.env.DEV) {
         console.debug(`[Walkthrough] finished at ${Math.round(performance.now() - t0.current)}ms`);
       }
