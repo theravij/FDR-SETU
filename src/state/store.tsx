@@ -41,6 +41,7 @@ export interface DemoState {
   frozenHash: string | null;
   notice: Notice | null;
   liveIntake: boolean;
+  authenticated: boolean;
 }
 
 type DemoAction =
@@ -61,7 +62,9 @@ type DemoAction =
   | { type: "upload-v2"; serial: string; amount: number; token: string; note: string; ocrMatched: boolean }
   | { type: "vigilance"; caseId: string }
   | { type: "dismiss-notice" }
-  | { type: "notify"; notice: Notice };
+  | { type: "notify"; notice: Notice }
+  | { type: "sign-in"; role: RoleId }
+  | { type: "sign-out" };
 
 const STORAGE_KEY = "fdr-setu-demo-v1";
 
@@ -90,6 +93,7 @@ function fresh(step: Step = 1): DemoState {
     frozenHash: null,
     notice: null,
     liveIntake: false,
+    authenticated: false,
   };
 }
 
@@ -113,6 +117,7 @@ function createInitial(): DemoState {
     frozenHash: null,
     notice: null,
     liveIntake: false,
+    authenticated: false,
   };
 }
 
@@ -339,6 +344,10 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
       return fresh(1);
     case "dismiss-notice":
       return { ...state, notice: null };
+    case "sign-in":
+      return { ...state, authenticated: true, role: action.role, screen: "queue", notice: null };
+    case "sign-out":
+      return { ...state, authenticated: false };
     case "notify":
       return { ...state, notice: action.notice };
     case "cosmetic": {
@@ -515,6 +524,8 @@ interface DemoApi {
   toggleVigilance: (caseId: string) => void;
   exportJson: () => void;
   exportCsv: () => void;
+  signIn: (role: RoleId) => void;
+  signOut: () => void;
 }
 
 const DemoContext = createContext<DemoApi | null>(null);
@@ -582,6 +593,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
           ocrMatched: input?.ocrMatched ?? true,
         }),
       toggleVigilance: (caseId) => send({ type: "vigilance", caseId }),
+      signIn: (role) => send({ type: "sign-in", role }),
+      signOut: () => send({ type: "sign-out" }),
       exportJson: () => {
         const snapshot = state.cases[state.caseId];
         void evaluateCaseWithFallback(snapshot).then(({ evaluation }) => {

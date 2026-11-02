@@ -44,6 +44,16 @@ export function DemoDirector({ children }: { children: ReactNode }) {
     pointRef.current = next;
     setPoint(next);
     setKind(kindAt(next.x + 2, next.y + 2));
+    const node = document.elementFromPoint(next.x, next.y);
+    node?.dispatchEvent(
+      new PointerEvent("pointermove", {
+        bubbles: true,
+        clientX: next.x,
+        clientY: next.y,
+        pointerId: 1,
+        pointerType: "mouse",
+      }),
+    );
   };
 
   const stopRecorder = (download: boolean) => {
@@ -183,15 +193,36 @@ export function DemoDirector({ children }: { children: ReactNode }) {
     const beats: Array<() => Promise<void> | void> = [
       () => {
         api().reset();
-        api().setRole("RO-104");
-        api().navigate({ screen: "queue" });
+        api().signOut();
         api().dismissNotice();
+      },
+      async () => {
+        await sleep(650);
+        setCursor({ x: 280, y: 460 });
+        await moveTo("#f");
+      },
+      () => humanType('[data-demo-target="login-id"]', "AICTE-RO-104", { replace: true }),
+      () => humanType('[data-demo-target="login-pw"]', "Setu@2026#Verify", { replace: true }),
+      async () => {
+        await glideClick('[data-demo-target="login-toggle-pw"]');
+        await sleep(320);
+        await glideClick('[data-demo-target="login-toggle-pw"]');
+        await glideClick('[data-demo-target="login-remember"]');
+      },
+      async () => {
+        await glideClick('[data-demo-target="login-submit"]');
+        const started = performance.now();
+        while (performance.now() - started < 3000) {
+          if (cancel.current) return;
+          if (document.querySelector('[data-demo-target="queue-search"]')) return;
+          await sleep(40);
+        }
       },
       () => humanType('[data-demo-target="queue-search"]', "National Institute"),
       () => glideClick('[data-demo-target="open-DEMO-001"]'),
       async () => {
         await moveTo('[data-demo-target="fdr-certificate"]');
-        await sleep(900);
+        await sleep(800);
       },
       () => moveTo('[data-demo-target="check-row-CHK-01"]'),
       () => humanType('[data-demo-target="officer-note-input"]', "V1 scan confirms ₹30L against ₹35L declared. Returning for V2.", { correctOnce: true }),
@@ -203,7 +234,6 @@ export function DemoDirector({ children }: { children: ReactNode }) {
       () => humanType('[data-demo-target="inst-fdr-input"]', "FDR/PNB/2025/91007", { replace: true }),
       () => humanType('[data-demo-target="inst-amount-input"]', "3500000", { replace: true }),
       () => humanType('[data-demo-target="inst-token-input"]', "PNB-GW-2026-44802"),
-      () => humanType('[data-demo-target="inst-note-input"]', "Uploaded supplementary PNB FDR for ₹35,00,000 with gateway confirmation."),
       () => glideClick('[data-demo-target="inst-ocr-scan"]'),
       async () => { await sleep(700); },
       () => glideClick('[data-demo-target="inst-submit-v2"]'),
@@ -220,7 +250,7 @@ export function DemoDirector({ children }: { children: ReactNode }) {
       () => glideClick('[data-demo-target="check-row-CHK-02"]'),
       async () => {
         await glideClick('[data-demo-target="tab-provenance"]');
-        await sleep(900);
+        await sleep(800);
       },
       () => glideClick('[data-demo-target="tab-clearances"]'),
       () => glideClick('[data-demo-target="tab-audit"]'),

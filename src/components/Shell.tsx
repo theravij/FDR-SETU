@@ -4,6 +4,7 @@ import { BaselineScreen } from "../screens/BaselineScreen";
 import { InstitutionScreen } from "../screens/InstitutionScreen";
 import { QueueScreen } from "../screens/QueueScreen";
 import { ReportsScreen } from "../screens/ReportsScreen";
+import { LoginScreen } from "../screens/LoginScreen";
 import { WorkspaceScreen } from "../screens/WorkspaceScreen";
 import { maskOperationalText } from "../lib/labels";
 import { DemoDirector } from "./DemoDirector";
@@ -43,7 +44,14 @@ function NoticeBar() {
 }
 
 export function Shell() {
-  const { state } = useDemo();
+  const { state, signIn } = useDemo();
+  if (!state.authenticated) {
+    return (
+      <DemoDirector>
+        <LoginScreen onSignedIn={signIn} />
+      </DemoDirector>
+    );
+  }
   return (
     <DemoDirector>
     <div className="h-screen w-screen overflow-hidden flex flex-col bg-slate-50 text-slate-900">

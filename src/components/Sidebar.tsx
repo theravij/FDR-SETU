@@ -1,4 +1,4 @@
-import { BarChart3, Download, GitCompare, Landmark, List, Scale } from "lucide-react";
+import { BarChart3, Download, GitCompare, Landmark, List, Lock, Scale } from "lucide-react";
 import type { ReactNode } from "react";
 import { ROLES } from "../engine/permissions";
 import { useDemo } from "../state/store";
@@ -13,7 +13,7 @@ const NAV: Array<{ id: ScreenId; label: string; hint: string; icon: ReactNode }>
 ];
 
 export function Sidebar() {
-  const { state, navigate, setRole, exportJson, exportCsv, reset, evaluation } = useDemo();
+  const { state, navigate, setRole, exportJson, exportCsv, reset, signOut, evaluation } = useDemo();
 
   return (
     <aside className="flex w-[268px] min-h-0 shrink-0 flex-col overflow-hidden border-r border-slate-800 bg-slate-950 text-slate-100">
@@ -92,6 +92,9 @@ export function Sidebar() {
         </div>
         <button type="button" onClick={reset} className="mt-2 w-full text-center text-[11px] text-slate-500 hover:text-slate-200">
           Reset
+        </button>
+        <button type="button" onClick={signOut} className="mt-1 inline-flex w-full items-center justify-center gap-1 text-center text-[11px] text-slate-500 hover:text-slate-200">
+          <Lock size={11} aria-hidden /> Lock / Sign out
         </button>
       </div>
     </aside>
