@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { registerRows } from "../engine/register";
 import { formatInr } from "../lib/format";
 import { displayStatus, formatCaseRef } from "../lib/labels";
-import { useDemo } from "../state/store";
+import { useApp } from "../state/store";
 import { Btn, ScreenFrame, StatusBadge } from "../components/ui";
 
 function sanitizeAmount(raw: string): string {
@@ -17,7 +17,7 @@ function nextSerial(current: string): string {
 }
 
 export function InstitutionScreen() {
-  const { state, uploadV2, navigate, setRole } = useDemo();
+  const { state, uploadV2, navigate, setRole } = useApp();
   const active = state.cases[state.caseId] ?? state.cases["DEMO-001"];
   const activeEvalStatus = useMemo(() => {
     const rows = registerRows([active]);
@@ -143,7 +143,7 @@ export function InstitutionScreen() {
         </div>
       ) : null}
       <div className="mb-4 grid gap-3 lg:grid-cols-5">
-        <article data-demo-target="institution-compare" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-3">
+        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-3">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <p className="font-mono text-[11px] font-semibold text-slate-700">{formatCaseRef(active.caseId)} · flagged by RO-104</p>
@@ -154,12 +154,12 @@ export function InstitutionScreen() {
           <div className="mt-3 grid gap-2">
             <label className="block text-[11px] font-medium text-slate-600">
               Replacement FDR serial number
-              <input data-demo-target="inst-fdr-input" value={serial} onChange={(event) => setSerial(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 font-mono text-[12px] outline-none focus:border-indigo-400" />
+              <input value={serial} onChange={(event) => setSerial(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 font-mono text-[12px] outline-none focus:border-indigo-400" />
             </label>
             <label className="block text-[11px] font-medium text-slate-600">
               Corrected principal amount in ₹
               <input
-                data-demo-target="inst-amount-input"
+
                 inputMode="numeric"
                 value={amount}
                 onChange={(event) => {
@@ -183,11 +183,11 @@ export function InstitutionScreen() {
             </p>
             <label className="block text-[11px] font-medium text-slate-600">
               Bank gateway confirmation token
-              <input data-demo-target="inst-token-input" value={token} onChange={(event) => setToken(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 font-mono text-[12px] outline-none focus:border-indigo-400" />
+              <input value={token} onChange={(event) => setToken(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 font-mono text-[12px] outline-none focus:border-indigo-400" />
             </label>
             <label className="block text-[11px] font-medium text-slate-600">
               Reviewer resubmission note
-              <input data-demo-target="inst-note-input" value={note} onChange={(event) => setNote(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-[12px] outline-none focus:border-indigo-400" />
+              <input value={note} onChange={(event) => setNote(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-[12px] outline-none focus:border-indigo-400" />
             </label>
           </div>
           <div
@@ -201,7 +201,7 @@ export function InstitutionScreen() {
             className="mt-3 rounded-lg border border-dashed border-slate-300 px-3 py-2"
           >
             <div className="flex flex-wrap items-center gap-2">
-              <button type="button" data-demo-target="inst-ocr-scan" onClick={() => void runScan()} className="text-[12px] font-semibold text-slate-900">Verify Instrument & Gateway Hash</button>
+              <button type="button" onClick={() => void runScan()} className="text-[12px] font-semibold text-slate-900">Verify Instrument & Gateway Hash</button>
               <label className="cursor-pointer text-[11px] font-medium text-indigo-700 hover:underline">
                 Choose PDF / image
                 <input
@@ -233,7 +233,7 @@ export function InstitutionScreen() {
             {verified ? <p className="mt-2 rounded-md bg-emerald-50 px-2 py-1 text-[12px] font-semibold text-emerald-800">{token || "Gateway"} verified · SHA-256 match</p> : null}
           </div>
           <div className="mt-3">
-            <Btn kind="primary" data-demo-target="inst-submit-v2" onClick={() => void submit()}>
+            <Btn kind="primary" onClick={() => void submit()}>
               {already ? "Open selective recheck" : "Submit Corrected V2 Instrument"}
             </Btn>
           </div>

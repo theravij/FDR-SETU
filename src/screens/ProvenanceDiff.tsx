@@ -1,9 +1,9 @@
 import { provenanceDiff } from "../engine/provenance";
 import { maskOperationalText } from "../lib/labels";
-import { useDemo } from "../state/store";
+import { useApp } from "../state/store";
 
 export function ProvenanceDiff() {
-  const { state } = useDemo();
+  const { state } = useApp();
   const snapshot = state.cases[state.caseId];
   const rows = provenanceDiff(snapshot);
   const hasV2 = snapshot.versions.some((item) => item.versionId === "V2");

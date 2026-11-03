@@ -14,25 +14,31 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173).
 
-`npm run check` asserts the five DEMO-001 steps, the superseded-evidence badge, the cosmetic rescan, the 403, the manual letter, the idempotent escalation, and the stale-hash block.
+`npm run check` asserts the primary FDR lifecycle steps, superseded-evidence handling, cosmetic rescan, role 403, manual letter, idempotent escalation, and stale-hash block.
 
 ## Screens
 
-1. **Case Workspace** — DEMO-001 header, five-step lifecycle, amount and recheck metrics, the instrument card, and five inspection tabs: Selective Recheck, Provenance Diff, Clearances, Audit Trail, Verification Summary.
-2. **Officer Queue** — search, status filters, ageing, and Open workspace. DEMO-004 hold is placed or lifted as VIG-22.
+1. **Case Workspace** — case header (`AICTE-FDR-2026-0104` and siblings), five-step lifecycle, amount and recheck metrics, the instrument card, and five inspection tabs: Selective Recheck, Provenance Diff, Clearances, Audit Trail, Verification Summary.
+2. **Officer Queue** — search, status filters, ageing, and Open workspace. Vigilance hold is placed or lifted as VIG-22.
 3. **Institution Portal** — INST-01 sees the V1 amount gap and submits the corrected instrument, which opens the selective recheck.
 4. **Workload & Ageing** — open-case ageing and due actions as of 2026-10-30.
-5. **Baseline Comparison** — full recheck versus selective recheck on canonical DEMO-001 at V2 upload.
+5. **Baseline Comparison** — full recheck versus selective recheck on the canonical FDR file at V2 upload.
 
-Roles are RO-104, DIR-01, VIG-22, and INST-01. Export JSON and Export CSV sit in the sidebar. Reset workspace restores the canonical seed.
+Roles are RO-104, DIR-01, VIG-22, and INST-01. Export JSON and Export CSV sit in the sidebar. Reset workspace restores the canonical seed pack.
 
-DEMO-001 steps:
+Primary FDR lifecycle (`AICTE-FDR-2026-0104`):
 
 1. V1 on file — declared amount and the scan do not match.
 2. V1 confirmed by the review officer.
-3. V2 uploaded — CHK-02 reopens; CHK-03 and CHK-04 stay preserved. EV-BNK-101 is historical.
+3. V2 uploaded — CHK-02 reopens; CHK-03 and CHK-04 stay preserved. Prior bank evidence is historical.
 4. V2 confirmed with fresh bank evidence.
-5. Ready for a DIR-01 decision. `financialRelease` stays `NOT_EXECUTED_HERE`.
+5. Ready for a DIR-01 decision. Financial release stays verification-and-lien scope only (no disbursement here).
+
+## Evaluator access
+
+Open the live app, then use **Continue as Guest (Evaluator Mode)** or the one-click role chips on the login screen.
+
+Live: [https://fdr-setu.vercel.app](https://fdr-setu.vercel.app)
 
 ## Deploy
 

@@ -1,41 +1,41 @@
 import { maskOperationalText } from "../lib/labels";
-import { useDemo } from "../state/store";
+import { useApp } from "../state/store";
 import { Btn } from "../components/ui";
 
 export function Clearances() {
-  const demo = useDemo();
-  const { state } = demo;
-  const demo005 = state.cases["DEMO-005"];
+  const app = useApp();
+  const { state } = app;
+  const case0125 = state.cases["DEMO-005"];
   const tests = [
     {
       title: "Cosmetic PDF rescan",
       copy: "File hash only. Checks stay.",
       action: "Run rescan",
-      onClick: demo.cosmeticRescan,
+      onClick: app.cosmeticRescan,
     },
     {
       title: "RBAC release attempt",
       copy: "Role gate on this hash.",
       action: `Attempt release as ${state.role}`,
-      onClick: () => demo.attemptRelease(),
+      onClick: () => app.attemptRelease(),
     },
     {
       title: "Bank gateway outage",
       copy: state.gatewayOutage ? "Record a T4 letter." : "Mark gateway outage.",
       action: state.gatewayOutage ? "Record manual letter" : "Mark gateway outage",
-      onClick: state.gatewayOutage ? demo.recordManualLetter : demo.toggleGateway,
+      onClick: state.gatewayOutage ? app.recordManualLetter : app.toggleGateway,
     },
     {
       title: `Idempotent escalation · ${maskOperationalText("DEMO-005")}`,
-      copy: demo005.escalation ? "Escalation already open." : "Open one escalation.",
-      action: demo005.escalation ? "Repeat escalation" : `Escalate ${maskOperationalText("DEMO-005")}`,
-      onClick: demo.escalateDemo005,
+      copy: case0125.escalation ? "Escalation already open." : "Open one escalation.",
+      action: case0125.escalation ? "Repeat escalation" : `Escalate ${maskOperationalText("DEMO-005")}`,
+      onClick: app.escalateCase,
     },
     {
       title: "Stale evaluationHash",
       copy: "Block a stale hash.",
       action: "Run stale-hash block",
-      onClick: demo.runStaleHashBlock,
+      onClick: app.runStaleHashBlock,
     },
   ];
 
@@ -62,8 +62,8 @@ export function Clearances() {
               <Btn
                 kind={snapshot.vigilanceHold ? "secondary" : "danger"}
                 onClick={() => {
-                  if (state.role !== "VIG-22") demo.setRole("VIG-22");
-                  else demo.toggleVigilance(snapshot.caseId);
+                  if (state.role !== "VIG-22") app.setRole("VIG-22");
+                  else app.toggleVigilance(snapshot.caseId);
                 }}
               >
                 {state.role === "VIG-22" ? (snapshot.vigilanceHold ? "Lift hold" : "Place hold") : "Switch to VIG-22"}

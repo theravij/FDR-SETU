@@ -270,7 +270,7 @@ export function LoginScreen({
       clearFieldErrors();
       if (status instanceof HTMLElement) {
         status.className = "status";
-        status.textContent = "Demo credentials populated — click Login or Continue as Guest.";
+        status.textContent = "Sample credentials populated — click Login or Continue as Guest.";
       }
     };
 

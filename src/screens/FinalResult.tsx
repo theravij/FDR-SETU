@@ -2,11 +2,11 @@ import { Copy, Landmark } from "lucide-react";
 import { formatInr, shortHash } from "../lib/format";
 import { glanceRows, PILL_CLASS } from "../lib/caseView";
 import { formatCaseRef, formatRuleVersion } from "../lib/labels";
-import { useDemo } from "../state/store";
+import { useApp } from "../state/store";
 import { StatusBadge } from "../components/ui";
 
 export function FinalResult() {
-  const { state, evaluation } = useDemo();
+  const { state, evaluation } = useApp();
   const snapshot = state.cases[state.caseId];
   const remark = (action: string) => snapshot.audit.filter((event) => event.action === action).at(-1)?.detail;
   const officer = remark("OFFICER_OBSERVATION");
@@ -30,7 +30,7 @@ export function FinalResult() {
             <h2 className="font-mono text-[13px] font-semibold text-slate-900">{formatCaseRef(snapshot.caseId)}</h2>
           </div>
           {evaluation.releaseAuthorised ? (
-            <aside data-demo-target="verification-seal" className="max-w-[220px] rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-right">
+            <aside className="max-w-[220px] rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-right">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-900">Verified & cleared</p>
               <p className="mt-0.5 font-mono text-[10px] text-emerald-800">{formatRuleVersion(evaluation.ruleVersion)}</p>
               <p className="font-mono text-[10px] text-emerald-800">{shortHash(evaluation.evaluationHash, 12)}</p>

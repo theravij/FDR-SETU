@@ -3,7 +3,7 @@ import { registerRows } from "../engine/register";
 import { roleChip } from "../lib/caseView";
 import { formatInr } from "../lib/format";
 import { formatCaseRef } from "../lib/labels";
-import { useDemo } from "../state/store";
+import { useApp } from "../state/store";
 import { Btn, ScreenFrame, StatusBadge } from "../components/ui";
 
 const FILTERS = ["All", "Discrepancy", "Recheck", "Ready", "Released", "Hold"] as const;
@@ -32,7 +32,7 @@ function sanitizeAmount(raw: string): string {
 }
 
 export function QueueScreen() {
-  const { state, navigate, toggleVigilance, setRole, intakeLive } = useDemo();
+  const { state, navigate, toggleVigilance, setRole, intakeLive } = useApp();
   const [filter, setFilter] = useState<Filter>("All");
   const [query, setQuery] = useState("");
   const [filing, setFiling] = useState(false);
@@ -112,7 +112,7 @@ export function QueueScreen() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            data-demo-target="queue-search"
+
             placeholder="Search case, institution, route"
             aria-label="Search the register"
             className="w-64 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] shadow-sm outline-none focus:border-indigo-400"
@@ -133,7 +133,7 @@ export function QueueScreen() {
             key={item}
             type="button"
             aria-pressed={filter === item}
-            data-demo-target={item === "Discrepancy" ? "filter-discrepancy" : item === "All" ? "filter-all" : undefined}
+
             onClick={() => setFilter(item)}
             className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
               filter === item ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
@@ -165,7 +165,7 @@ export function QueueScreen() {
             </thead>
             <tbody>
               {visible.map((row) => (
-                <tr key={row.caseId} data-demo-target={row.caseId === "DEMO-004" ? "row-hold" : undefined} className="hover:bg-slate-50">
+                <tr key={row.caseId} className="hover:bg-slate-50">
                   <td className="border-b border-slate-100 px-3 py-2 font-mono text-[12px] font-semibold text-slate-900">{formatCaseRef(row.caseId)}</td>
                   <td className="border-b border-slate-100 px-3 py-2 text-[12px]">{row.institutionName}</td>
                   <td className="border-b border-slate-100 px-3 py-2 text-[12px] text-slate-600">{row.routeLabel}</td>
@@ -181,7 +181,7 @@ export function QueueScreen() {
                   <td className="border-b border-slate-100 px-3 py-2">
                     <div className="flex justify-end gap-1">
                       <Btn
-                        data-demo-target={row.caseId === "DEMO-001" ? "open-DEMO-001" : undefined}
+
                         onClick={() => navigate({ screen: "workspace", tab: "recheck", caseId: row.caseId })}
                       >
                         Open

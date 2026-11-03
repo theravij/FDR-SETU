@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { EDGE_CLASS, glanceRows, glanceSummary, PILL_CLASS } from "../lib/caseView";
-import { useDemo } from "../state/store";
+import { useApp } from "../state/store";
 
 export function RecheckMatrix() {
-  const { state } = useDemo();
+  const { state } = useApp();
   const snapshot = state.cases[state.caseId];
   const [openId, setOpenId] = useState<string | null>(null);
   const rows = glanceRows(snapshot);
   const summary = glanceSummary(rows);
 
   return (
-    <div data-demo-target="recheck-matrix" className="flex min-h-0 flex-1 flex-col gap-2 p-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
       <div className="grid shrink-0 grid-cols-3 gap-2 text-[12px]">
         {summary.map((item) => (
           <p key={item.label} className={`rounded-lg border px-2 py-1.5 font-medium transition-colors duration-300 ${PILL_CLASS[item.tone]}`}>
@@ -24,7 +24,7 @@ export function RecheckMatrix() {
             {rows.map((row) => (
               <tr
                 key={row.id}
-                data-demo-target={`check-row-${row.id}`}
+
                 onClick={() => setOpenId((current) => (current === row.id ? null : row.id))}
                 className={`cursor-pointer border-b border-l-4 border-slate-100 transition-colors duration-300 last:border-b-0 ${EDGE_CLASS[row.tone]} ${openId === row.id ? "bg-slate-50" : ""}`}
               >

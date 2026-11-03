@@ -16,17 +16,6 @@ body {
   font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
 }
 
-.demo-ripple {
-  position: absolute;
-  left: 2px;
-  top: 2px;
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  border: 2px solid #4f46e5;
-  animation: demo-ripple 420ms ease-out forwards;
-}
-
 @keyframes fdr-scan {
   from {
     top: 0;
@@ -38,15 +27,4 @@ body {
 
 .fdr-scan-line {
   animation: fdr-scan 650ms linear forwards;
-}
-
-@keyframes demo-ripple {
-  from {
-    transform: scale(0.35);
-    opacity: 0.9;
-  }
-  to {
-    transform: scale(2.8);
-    opacity: 0;
-  }
 }

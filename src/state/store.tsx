@@ -35,7 +35,7 @@ export interface CaseUiState {
   directorNote: string;
 }
 
-export interface DemoState {
+export interface AppState {
   screen: ScreenId;
   tab: WorkspaceTab;
   step: Step;
@@ -51,7 +51,7 @@ export interface DemoState {
   authenticated: boolean;
 }
 
-type DemoAction =
+type AppAction =
   | { type: "set-role"; role: RoleId }
   | { type: "navigate"; screen?: ScreenId; tab?: WorkspaceTab; caseId?: string }
   | { type: "set-step"; step: Step }
@@ -74,7 +74,7 @@ type DemoAction =
   | { type: "sign-out" }
   | { type: "set-case-note"; field: "officerNote" | "directorNote"; value: string };
 
-const STORAGE_KEY = "fdr-setu-demo-v1";
+const STORAGE_KEY = "fdr-setu-v1";
 
 function loadStored(): { cases?: Record<string, CaseSnapshot>; gatewayOutage?: boolean } | null {
   try {
@@ -104,13 +104,13 @@ export function deriveStep(snapshot: CaseSnapshot): Step {
   return 1;
 }
 
-function ensureCaseUi(state: DemoState, caseId: string): CaseUiState {
+function ensureCaseUi(state: AppState, caseId: string): CaseUiState {
   if (state.caseUi[caseId]) return state.caseUi[caseId];
   const snapshot = state.cases[caseId];
   return emptyCaseUi(snapshot ? deriveStep(snapshot) : 1);
 }
 
-function writeCaseUi(state: DemoState, caseId: string, patch: Partial<CaseUiState>): DemoState {
+function writeCaseUi(state: AppState, caseId: string, patch: Partial<CaseUiState>): AppState {
   const current = ensureCaseUi(state, caseId);
   const next = { ...current, ...patch };
   return {
@@ -120,7 +120,7 @@ function writeCaseUi(state: DemoState, caseId: string, patch: Partial<CaseUiStat
   };
 }
 
-function fresh(step: Step = 1): DemoState {
+function fresh(step: Step = 1): AppState {
   return {
     screen: "workspace",
     tab: "recheck",
@@ -138,7 +138,7 @@ function fresh(step: Step = 1): DemoState {
   };
 }
 
-function createInitial(): DemoState {
+function createInitial(): AppState {
   const stored = loadStored();
   const cases = seedCases();
   for (const [id, snapshot] of Object.entries(stored?.cases ?? {})) {
@@ -180,7 +180,7 @@ function keepTypedNotes(previous: CaseSnapshot, next: CaseSnapshot): CaseSnapsho
   );
 }
 
-function withCanonicalStep(state: DemoState, step: Step, patch: Partial<DemoState>): DemoState {
+function withCanonicalStep(state: AppState, step: Step, patch: Partial<AppState>): AppState {
   const previous = state.cases["DEMO-001"];
   const built = buildDemo001(step);
   const snapshot = previous ? keepTypedNotes(previous, built) : built;
@@ -303,7 +303,7 @@ function liveReplacement(snapshot: CaseSnapshot, input: { serial: string; amount
   };
 }
 
-function putCase(state: DemoState, snapshot: CaseSnapshot, notice: Notice): DemoState {
+function putCase(state: AppState, snapshot: CaseSnapshot, notice: Notice): AppState {
   return {
     ...state,
     cases: { ...state.cases, [snapshot.caseId]: snapshot },
@@ -311,11 +311,11 @@ function putCase(state: DemoState, snapshot: CaseSnapshot, notice: Notice): Demo
   };
 }
 
-function refuse(state: DemoState, title: string, body: string): DemoState {
+function refuse(state: AppState, title: string, body: string): AppState {
   return { ...state, notice: { tone: "deny", http: 403, title, body } };
 }
 
-function reduce(state: DemoState, action: DemoAction): DemoState {
+function reduce(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case "set-role":
       return { ...state, role: action.role };
@@ -637,8 +637,8 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
   }
 }
 
-interface DemoApi {
-  state: DemoState;
+interface AppApi {
+  state: AppState;
   evaluation: Evaluation;
   engineSource: EngineSource;
   setRole: (role: RoleId) => void;
@@ -657,7 +657,7 @@ interface DemoApi {
   attemptRelease: (remark?: string, asRole?: RoleId) => void;
   toggleGateway: () => void;
   recordManualLetter: () => void;
-  escalateDemo005: () => void;
+  escalateCase: () => void;
   runStaleHashBlock: () => void;
   uploadV2: (input?: { serial: string; amount: number; token: string; note: string; ocrMatched: boolean; asRole?: RoleId }) => void;
   toggleVigilance: (caseId: string, asRole?: RoleId) => void;
@@ -667,9 +667,9 @@ interface DemoApi {
   signOut: () => void;
 }
 
-const DemoContext = createContext<DemoApi | null>(null);
+const AppContext = createContext<AppApi | null>(null);
 
-export function DemoProvider({ children }: { children: ReactNode }) {
+export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reduce, undefined, createInitial);
   const [engineSource, setEngineSource] = useState<EngineSource>("local");
 
@@ -695,8 +695,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     };
   }, [state.caseId, state.cases]);
 
-  const api = useMemo<DemoApi>(() => {
-    const send = (action: DemoAction) => {
+  const api = useMemo<AppApi>(() => {
+    const send = (action: AppAction) => {
       dispatch(action);
     };
     return {
@@ -722,7 +722,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       attemptRelease: (remark = "", asRole) => send({ type: "release", remark, asRole }),
       toggleGateway: () => send({ type: "gateway" }),
       recordManualLetter: () => send({ type: "manual-letter" }),
-      escalateDemo005: () => send({ type: "escalate" }),
+      escalateCase: () => send({ type: "escalate" }),
       runStaleHashBlock: () => send({ type: "stale-hash" }),
       uploadV2: (input) =>
         send({
@@ -770,11 +770,11 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     };
   }, [engineSource, state]);
 
-  return <DemoContext.Provider value={api}>{children}</DemoContext.Provider>;
+  return <AppContext.Provider value={api}>{children}</AppContext.Provider>;
 }
 
-export function useDemo(): DemoApi {
-  const api = useContext(DemoContext);
-  if (!api) throw new Error("useDemo must be used inside DemoProvider");
+export function useApp(): AppApi {
+  const api = useContext(AppContext);
+  if (!api) throw new Error("useApp must be used inside AppProvider");
   return api;
 }

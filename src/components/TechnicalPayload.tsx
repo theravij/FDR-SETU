@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useDemo } from "../state/store";
+import { useApp } from "../state/store";
 
 export function TechnicalPayload() {
-  const { evaluation } = useDemo();
+  const { evaluation } = useApp();
   const [open, setOpen] = useState(false);
 
   return (

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { registerRows, type RegisterRow } from "../engine/register";
-import { useDemo } from "../state/store";
+import { useApp } from "../state/store";
 import { formatCaseRef } from "../lib/labels";
 import { ScreenFrame, StatusBadge } from "../components/ui";
 
@@ -18,7 +18,7 @@ function countBy(rows: RegisterRow[], key: (row: RegisterRow) => string): Array<
 }
 
 export function ReportsScreen() {
-  const { state } = useDemo();
+  const { state } = useApp();
   const rows = useMemo(() => registerRows(Object.values(state.cases)), [state.cases]);
   const open = rows.filter((row) => row.statusLabel !== "RELEASED");
   const ageing = ["0–7 days", "8–15 days", "16–30 days", "31+ days"].map((label) => ({
@@ -36,7 +36,7 @@ export function ReportsScreen() {
       title="Workload & Ageing"
       meta={`${open.length} open · ${open.length ? Math.round(openAge / open.length) : 0}d mean age`}
     >
-      <div data-demo-target="workload-board" className="grid gap-3 lg:grid-cols-3">
+      <div className="grid gap-3 lg:grid-cols-3">
         <section className="rounded-xl border border-slate-200/80 bg-white shadow-sm">
           <h2 className="border-b border-slate-200 px-3 py-2 text-[13px] font-semibold text-navy">Open cases by ageing</h2>
           <table className="w-full text-left">

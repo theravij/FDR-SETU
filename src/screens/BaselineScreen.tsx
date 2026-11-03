@@ -40,7 +40,7 @@ export function BaselineScreen() {
           <p className="mt-1 font-mono text-[18px] font-semibold tabular-nums text-indigo-950">{(baselineOpen - selectiveOpen) * MINUTES}</p>
         </article>
       </div>
-      <div data-demo-target="baseline-compare" className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-5 gap-3">
         <section className="col-span-3 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
           <table className="w-full text-left">
             <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">

@@ -1,7 +1,7 @@
 import { BarChart3, Download, GitCompare, Landmark, List, Lock, Scale } from "lucide-react";
 import type { ReactNode } from "react";
 import { ROLES } from "../engine/permissions";
-import { useDemo } from "../state/store";
+import { useApp } from "../state/store";
 import type { RoleId, ScreenId } from "../types";
 
 const NAV: Array<{ id: ScreenId; label: string; icon: ReactNode }> = [
@@ -13,7 +13,7 @@ const NAV: Array<{ id: ScreenId; label: string; icon: ReactNode }> = [
 ];
 
 export function Sidebar() {
-  const { state, navigate, setRole, exportJson, exportCsv, reset, signOut, evaluation } = useDemo();
+  const { state, navigate, setRole, exportJson, exportCsv, reset, signOut, evaluation } = useApp();
 
   return (
     <aside className="flex w-[268px] min-h-0 shrink-0 flex-col overflow-hidden border-r border-slate-800 bg-slate-950 text-slate-100">
@@ -37,7 +37,7 @@ export function Sidebar() {
             <button
               key={item.id}
               type="button"
-              data-demo-target={`nav-${item.id}`}
+
               onClick={() => navigate({ screen: item.id })}
               aria-current={active ? "page" : undefined}
               className={`mb-1 flex w-full items-center gap-2.5 rounded-lg border-l-2 px-2.5 py-2 text-left ${
@@ -63,7 +63,7 @@ export function Sidebar() {
               <button
                 key={item.id}
                 type="button"
-                data-demo-target={`role-${item.id}`}
+
                 aria-pressed={active}
                 onClick={() => setRole(item.id as RoleId)}
                 className={`rounded-lg border px-2 py-1.5 text-left ${

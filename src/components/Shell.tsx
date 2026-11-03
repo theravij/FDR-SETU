@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useDemo } from "../state/store";
+import { useApp } from "../state/store";
 import { BaselineScreen } from "../screens/BaselineScreen";
 import { InstitutionScreen } from "../screens/InstitutionScreen";
 import { QueueScreen } from "../screens/QueueScreen";
@@ -11,7 +11,7 @@ import { maskOperationalText } from "../lib/labels";
 import { Sidebar } from "./Sidebar";
 
 function NoticeBar() {
-  const { state, dismissNotice } = useDemo();
+  const { state, dismissNotice } = useApp();
   const notice = state.notice;
   if (!notice) return null;
   const tone =
@@ -44,7 +44,7 @@ function NoticeBar() {
 }
 
 export function Shell() {
-  const { state, signIn } = useDemo();
+  const { state, signIn } = useApp();
   if (!state.authenticated) {
     return <LoginScreen onSignedIn={signIn} />;
   }
@@ -52,7 +52,7 @@ export function Shell() {
 }
 
 function AuthenticatedShell() {
-  const { state } = useDemo();
+  const { state } = useApp();
   const [shown, setShown] = useState(false);
   useEffect(() => {
     const frame = requestAnimationFrame(() => setShown(true));

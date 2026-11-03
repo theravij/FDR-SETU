@@ -3,7 +3,7 @@ import { Landmark } from "lucide-react";
 import { activeVersion, amountGap, glanceRows, PILL_CLASS, roleChip } from "../lib/caseView";
 import { formatInr, routeLabel } from "../lib/format";
 import { formatCaseRef } from "../lib/labels";
-import { useDemo } from "../state/store";
+import { useApp } from "../state/store";
 import type { CaseSnapshot, RoleId, Step, WorkspaceTab } from "../types";
 import { AuditHistory } from "./AuditHistory";
 import { Clearances } from "./Clearances";
@@ -21,8 +21,8 @@ const STEPS: Array<{ step: Step; label: string }> = [
 ];
 
 export function WorkspaceScreen() {
-  const demo = useDemo();
-  const { state, evaluation, navigate, setStep, setOfficerNote, setDirectorNote } = demo;
+  const app = useApp();
+  const { state, evaluation, navigate, setStep, setOfficerNote, setDirectorNote } = app;
   const snapshot = state.cases[state.caseId];
   const caseUi = state.caseUi[state.caseId] ?? { step: state.step, officerNote: "", directorNote: "" };
   const officerNote = caseUi.officerNote;
@@ -35,7 +35,7 @@ export function WorkspaceScreen() {
   const locked = rows.filter((row) => row.kind === "locked").length;
   const reverified = rows.filter((row) => row.kind === "reverified").length;
   const saved = rows.length ? Math.round((locked / rows.length) * 100) : 0;
-  const action = primaryAction(demo, officerNote, directorNote);
+  const action = primaryAction(app, officerNote, directorNote);
   const tabs: Array<{ id: WorkspaceTab; label: string }> = [
     { id: "recheck", label: "Selective Recheck" },
     { id: "provenance", label: "Provenance Diff" },
@@ -54,7 +54,7 @@ export function WorkspaceScreen() {
           <HeaderBadge snapshot={snapshot} step={state.step} shortfall={shortfall} releaseReady={evaluation.releaseReady} releaseAuthorised={evaluation.releaseAuthorised} />
           {state.step >= 5 && !evaluation.releaseAuthorised ? (
             <input
-              data-demo-target="director-note-input"
+
               value={directorNote}
               onChange={(event) => setDirectorNote(event.target.value)}
               placeholder="Enter final authorization remark..."
@@ -66,7 +66,7 @@ export function WorkspaceScreen() {
             <Btn
               kind="primary"
               className={`${state.step >= 5 && !evaluation.releaseAuthorised ? "" : "ml-auto"} shrink-0 whitespace-nowrap`}
-              data-demo-target={action.target}
+
               onClick={() => action.run()}
             >
               {action.label}
@@ -125,7 +125,7 @@ export function WorkspaceScreen() {
                   key={tab.id}
                   type="button"
                   role="tab"
-                  data-demo-target={`tab-${tab.id}`}
+
                   aria-selected={selected}
                   onClick={() => navigate({ tab: tab.id })}
                   className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-medium ${
@@ -293,7 +293,7 @@ function Certificate({
   const rejected = preview.versionId === "V1" && mismatch;
 
   return (
-    <article data-demo-target="fdr-certificate" className="group col-span-4 flex min-h-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
+    <article className="group col-span-4 flex min-h-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 text-slate-800">
@@ -309,7 +309,7 @@ function Certificate({
             <button
               key={item.versionId}
               type="button"
-              data-demo-target={item.versionId === "V1" ? "cert-v1" : "cert-v2"}
+
               aria-pressed={item.versionId === preview.versionId}
               onClick={() => setPreviewId(item.versionId)}
               className={`rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold ${
@@ -353,7 +353,7 @@ function Certificate({
       </dl>
       {step <= 1 && mismatch ? (
         <input
-          data-demo-target="officer-note-input"
+
           value={officerNote}
           onChange={(event) => onOfficerNote(event.target.value)}
           placeholder="Add verification observation for institution..."
@@ -365,13 +365,13 @@ function Certificate({
   );
 }
 
-function primaryAction(demo: ReturnType<typeof useDemo>, officerNote: string, directorNote: string): {
+function primaryAction(app: ReturnType<typeof useApp>, officerNote: string, directorNote: string): {
   label: string;
   role: RoleId;
   target: string;
   run: () => void;
 } | null {
-  const { state, evaluation, confirmV1, forwardReview, attemptRelease, toggleVigilance, navigate } = demo;
+  const { state, evaluation, confirmV1, forwardReview, attemptRelease, toggleVigilance, navigate } = app;
   const snapshot = state.cases[state.caseId];
   const current = activeVersion(snapshot);
   const declared = current?.fields.declaredAmountInr ?? 0;
@@ -401,7 +401,7 @@ function primaryAction(demo: ReturnType<typeof useDemo>, officerNote: string, di
       role: "INST-01",
       target: "workflow-primary-cta",
       run: () => {
-        if (state.role !== "INST-01") demo.setRole("INST-01");
+        if (state.role !== "INST-01") app.setRole("INST-01");
         navigate({ screen: "institution" });
       },
     };
@@ -412,7 +412,7 @@ function primaryAction(demo: ReturnType<typeof useDemo>, officerNote: string, di
       role: "RO-104",
       target: "step4-confirm-btn",
       run: () => {
-        if (state.role !== "RO-104") demo.setRole("RO-104");
+        if (state.role !== "RO-104") app.setRole("RO-104");
         forwardReview();
       },
     };

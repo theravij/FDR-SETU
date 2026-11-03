@@ -1,6 +1,6 @@
 import { verifyAuditChain } from "../lib/audit";
 import { shortHash } from "../lib/format";
-import { useDemo } from "../state/store";
+import { useApp } from "../state/store";
 import { maskOperationalText } from "../lib/labels";
 import { StatusBadge } from "../components/ui";
 
@@ -25,7 +25,7 @@ function isRemark(action: string): boolean {
 }
 
 export function AuditHistory() {
-  const { state } = useDemo();
+  const { state } = useApp();
   const snapshot = state.cases[state.caseId];
   const intact = verifyAuditChain(snapshot.audit);
   const events = [...snapshot.audit].reverse();
