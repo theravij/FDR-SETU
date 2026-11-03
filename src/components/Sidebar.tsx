@@ -89,7 +89,10 @@ export function Sidebar() {
         <button type="button" onClick={reset} className="mt-2 w-full text-center text-[11px] text-slate-500 hover:text-slate-200">
           Reset
         </button>
-        <button type="button" onClick={signOut} className="mt-1 inline-flex w-full items-center justify-center gap-1 text-center text-[11px] text-slate-500 hover:text-slate-200">
+        <div className="mt-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1 text-center text-[10px] font-semibold text-emerald-200">
+          Evaluator Session · {state.role}
+        </div>
+        <button type="button" onClick={signOut} className="mt-2 inline-flex w-full items-center justify-center gap-1 text-center text-[11px] text-slate-500 hover:text-slate-200">
           <Lock size={11} aria-hidden /> Lock / Sign out
         </button>
       </div>

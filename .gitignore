@@ -7,3 +7,7 @@ dist
 .env
 .env.*
 !.env.example
+*.mp4
+*.webm
+public/voiceover.mp3
+ELEVENLABS_*.md

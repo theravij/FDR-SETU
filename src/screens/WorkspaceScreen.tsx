@@ -22,8 +22,11 @@ const STEPS: Array<{ step: Step; label: string }> = [
 
 export function WorkspaceScreen() {
   const demo = useDemo();
-  const { state, evaluation, navigate, setStep, setRole } = demo;
+  const { state, evaluation, navigate, setStep, setOfficerNote, setDirectorNote } = demo;
   const snapshot = state.cases[state.caseId];
+  const caseUi = state.caseUi[state.caseId] ?? { step: state.step, officerNote: "", directorNote: "" };
+  const officerNote = caseUi.officerNote;
+  const directorNote = caseUi.directorNote;
   const current = activeVersion(snapshot);
   const declared = current?.fields.declaredAmountInr ?? evaluation.declaredAmountInr;
   const observed = current?.fields.observedAmountInr ?? evaluation.observedAmountInr;
@@ -32,8 +35,6 @@ export function WorkspaceScreen() {
   const locked = rows.filter((row) => row.kind === "locked").length;
   const reverified = rows.filter((row) => row.kind === "reverified").length;
   const saved = rows.length ? Math.round((locked / rows.length) * 100) : 0;
-  const [officerNote, setOfficerNote] = useState("");
-  const [directorNote, setDirectorNote] = useState("");
   const action = primaryAction(demo, officerNote, directorNote);
   const tabs: Array<{ id: WorkspaceTab; label: string }> = [
     { id: "recheck", label: "Selective Recheck" },
@@ -66,10 +67,7 @@ export function WorkspaceScreen() {
               kind="primary"
               className={`${state.step >= 5 && !evaluation.releaseAuthorised ? "" : "ml-auto"} shrink-0 whitespace-nowrap`}
               data-demo-target={action.target}
-              onClick={() => {
-                if (state.role !== action.role) setRole(action.role);
-                action.run();
-              }}
+              onClick={() => action.run()}
             >
               {action.label}
             </Btn>
@@ -78,31 +76,29 @@ export function WorkspaceScreen() {
           )}
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          {snapshot.caseId === "DEMO-001" ? (
-            <div className="flex shrink-0 gap-1" role="group" aria-label="Regulation Bureau lifecycle">
-              {STEPS.map((item) => {
-                const selected = state.step === item.step;
-                const done = state.step > item.step;
-                return (
-                  <button
-                    key={item.step}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => setStep(item.step)}
-                    className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] font-medium ${
-                      selected
-                        ? "border-indigo-600 bg-indigo-600 text-white"
-                        : done
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                          : "border-slate-200 bg-white text-slate-600"
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
+          <div className="flex shrink-0 gap-1" role="group" aria-label="Regulation Bureau lifecycle">
+            {STEPS.map((item) => {
+              const selected = state.step === item.step;
+              const done = state.step > item.step;
+              return (
+                <button
+                  key={item.step}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => setStep(item.step)}
+                  className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] font-medium ${
+                    selected
+                      ? "border-indigo-600 bg-indigo-600 text-white"
+                      : done
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                        : "border-slate-200 bg-white text-slate-600"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
           <LiveBar
             snapshot={snapshot}
             step={state.step}
@@ -168,14 +164,14 @@ function HeaderBadge({
   releaseAuthorised: boolean;
 }) {
   const v2 = snapshot.currentVersionId !== "V1";
-  const rejectedV1 = shortfall > 0 || (snapshot.caseId === "DEMO-001" && step <= 2 && !v2);
+  const rejectedV1 = shortfall > 0 || (step <= 2 && !v2 && shortfall >= 0 && !releaseReady && !releaseAuthorised && step === 2);
   let text = "In review";
   let tone: keyof typeof PILL_CLASS = "slate";
   if (snapshot.vigilanceHold) {
     text = "Vigilance Hold · VIG-22";
     tone = "amber";
-  } else if (rejectedV1) {
-    text = `Shortfall: -${formatInr(shortfall)} · Needs V2`;
+  } else if (shortfall > 0 || (step <= 2 && !v2 && step >= 2)) {
+    text = `Shortfall: -${formatInr(Math.max(shortfall, 0))} · Needs V2`;
     tone = "rose";
   } else if (v2 && (step === 3 || step === 4)) {
     text = "Selective Recheck Active";
@@ -183,9 +179,16 @@ function HeaderBadge({
   } else if (releaseAuthorised) {
     text = "RELEASED — Verified";
     tone = "emerald";
-  } else if (releaseReady && (step >= 5 || snapshot.caseId !== "DEMO-001")) {
+  } else if (releaseReady && step >= 5) {
     text = "Ready for Director Sign-Off";
     tone = "emerald";
+  } else if (releaseReady) {
+    text = "Ready for Director Sign-Off";
+    tone = "emerald";
+  }
+  if (rejectedV1 && shortfall <= 0 && step === 2 && !v2) {
+    text = "Awaiting V2 replacement";
+    tone = "amber";
   }
   return <span className={`shrink-0 whitespace-nowrap rounded-md border px-1.5 py-0.5 text-[10px] font-semibold transition-colors duration-300 ${PILL_CLASS[tone]}`}>{text}</span>;
 }
@@ -233,7 +236,7 @@ function LiveBar({
     dot = "bg-rose-500";
     headline = `${bank} ${version} scan is short ${formatInr(shortfall)}`;
     next = `${roleChip("RO-104")} → Flag Discrepancy`;
-  } else if (shortfall > 0 || (snapshot.caseId === "DEMO-001" && step === 2 && !v2)) {
+  } else if (shortfall > 0 || (step === 2 && !v2)) {
     dot = "bg-amber-500";
     headline = `${bank} ${version} rejected, awaiting V2 upload`;
     next = `${roleChip("INST-01")} → Upload V2 FDR`;
@@ -279,7 +282,7 @@ function Certificate({
   const [previewId, setPreviewId] = useState(snapshot.currentVersionId);
   useEffect(() => {
     setPreviewId(snapshot.currentVersionId);
-  }, [snapshot.currentVersionId, step]);
+  }, [snapshot.currentVersionId, step, snapshot.caseId]);
   const preview = versions.find((item) => item.versionId === previewId) ?? versions[0];
   if (!preview) return null;
   const mismatch = preview.fields.declaredAmountInr !== preview.fields.observedAmountInr;
@@ -370,53 +373,56 @@ function primaryAction(demo: ReturnType<typeof useDemo>, officerNote: string, di
 } | null {
   const { state, evaluation, confirmV1, forwardReview, attemptRelease, toggleVigilance, navigate } = demo;
   const snapshot = state.cases[state.caseId];
+  const current = activeVersion(snapshot);
+  const declared = current?.fields.declaredAmountInr ?? 0;
+  const observed = current?.fields.observedAmountInr ?? 0;
+  const shortfall = amountGap(declared, observed);
+  const hasV2 = snapshot.currentVersionId === "V2" || snapshot.versions.some((item) => item.versionId === "V2");
   if (evaluation.releaseAuthorised) return null;
   if (snapshot.vigilanceHold) {
     return {
       label: "Lift vigilance hold",
       role: "VIG-22",
       target: "step1-flag-btn",
-      run: () => toggleVigilance(snapshot.caseId),
+      run: () => toggleVigilance(snapshot.caseId, "VIG-22"),
     };
   }
-  if (snapshot.caseId === "DEMO-001" && state.step <= 1) {
+  if ((state.step <= 1 || (!hasV2 && shortfall > 0 && state.step < 2)) && shortfall > 0 && !hasV2) {
     return {
-      label: `Flag ${formatInr(amountGap(activeVersion(snapshot)?.fields.declaredAmountInr ?? 0, activeVersion(snapshot)?.fields.observedAmountInr ?? 0))} Discrepancy & Return to Institution`,
+      label: `Flag ${formatInr(shortfall)} Discrepancy & Return to Institution`,
       role: "RO-104",
       target: "step1-flag-btn",
-      run: () => confirmV1(officerNote),
+      run: () => confirmV1(officerNote, "RO-104"),
     };
   }
-  if (snapshot.caseId === "DEMO-001" && state.step === 2) {
+  if (state.step === 2 && !hasV2) {
     return {
       label: "Open institution portal",
       role: "INST-01",
       target: "workflow-primary-cta",
-      run: () => navigate({ screen: "institution" }),
+      run: () => {
+        if (state.role !== "INST-01") demo.setRole("INST-01");
+        navigate({ screen: "institution" });
+      },
     };
   }
-  if (snapshot.caseId === "DEMO-001" && (state.step === 3 || state.step === 4)) {
+  if (hasV2 && (state.step === 3 || state.step === 4) && !evaluation.releaseReady) {
     return {
       label: "Confirm Selective Recheck & Forward to Director",
       role: "RO-104",
       target: "step4-confirm-btn",
-      run: () => forwardReview(),
+      run: () => {
+        if (state.role !== "RO-104") demo.setRole("RO-104");
+        forwardReview();
+      },
     };
   }
-  if (snapshot.caseId === "DEMO-001" && state.step >= 5 && evaluation.releaseReady) {
+  if (evaluation.releaseReady || (hasV2 && state.step >= 5)) {
     return {
       label: "Authorise Verification Record",
       role: "DIR-01",
       target: "step5-authorise-btn",
-      run: () => attemptRelease(directorNote),
-    };
-  }
-  if (evaluation.releaseReady) {
-    return {
-      label: "Authorise Verification Record",
-      role: "DIR-01",
-      target: "step5-authorise-btn",
-      run: () => attemptRelease(directorNote),
+      run: () => attemptRelease(directorNote, "DIR-01"),
     };
   }
   return null;

@@ -8,7 +8,6 @@ import { ReportsScreen } from "../screens/ReportsScreen";
 import { LoginScreen } from "../screens/LoginScreen";
 import { WorkspaceScreen } from "../screens/WorkspaceScreen";
 import { maskOperationalText } from "../lib/labels";
-import { DemoDirector } from "./DemoDirector";
 import { Sidebar } from "./Sidebar";
 
 function NoticeBar() {
@@ -47,17 +46,9 @@ function NoticeBar() {
 export function Shell() {
   const { state, signIn } = useDemo();
   if (!state.authenticated) {
-    return (
-      <DemoDirector>
-        <LoginScreen onSignedIn={signIn} />
-      </DemoDirector>
-    );
+    return <LoginScreen onSignedIn={signIn} />;
   }
-  return (
-    <DemoDirector>
-    <AuthenticatedShell />
-    </DemoDirector>
-  );
+  return <AuthenticatedShell />;
 }
 
 function AuthenticatedShell() {

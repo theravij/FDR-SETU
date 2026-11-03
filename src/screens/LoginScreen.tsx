@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { RoleId } from "../types";
+import type { RoleId, ScreenId } from "../types";
 import { LOGIN_MARKUP } from "./loginMarkup";
 import "./login.css";
 
@@ -17,7 +17,11 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-export function LoginScreen({ onSignedIn }: { onSignedIn: (role: RoleId) => void }) {
+export function LoginScreen({
+  onSignedIn,
+}: {
+  onSignedIn: (role: RoleId, screen?: ScreenId) => void;
+}) {
   const rootRef = useRef<HTMLDivElement>(null);
   const onSignedInRef = useRef(onSignedIn);
   onSignedInRef.current = onSignedIn;
@@ -26,6 +30,7 @@ export function LoginScreen({ onSignedIn }: { onSignedIn: (role: RoleId) => void
     const root = rootRef.current;
     if (!root) return;
     let cancelled = false;
+    let locking = false;
     const $ = (id: string) => root.querySelector(`#${CSS.escape(id)}`);
 
     const chips = () => {
@@ -152,15 +157,50 @@ export function LoginScreen({ onSignedIn }: { onSignedIn: (role: RoleId) => void
       return !message;
     };
 
+    const clearFieldErrors = () => {
+      setErr("id", "");
+      setErr("pw", "");
+    };
+
+    const setBusy = (busy: boolean) => {
+      locking = busy;
+      const go = $("go");
+      const guest = $("guest-go");
+      if (go instanceof HTMLButtonElement) {
+        go.disabled = busy;
+        if (!busy) go.textContent = "Login";
+      }
+      if (guest instanceof HTMLButtonElement) guest.disabled = busy;
+      root.querySelectorAll(".role-chip").forEach((node) => {
+        if (node instanceof HTMLButtonElement) node.disabled = busy;
+      });
+    };
+
+    const finishSignIn = async (role: RoleId, screen: ScreenId | undefined, message: string) => {
+      if (locking || cancelled) return;
+      setBusy(true);
+      clearFieldErrors();
+      const status = $("st");
+      if (status instanceof HTMLElement) {
+        status.className = "status";
+        status.textContent = message;
+      }
+      await wait(350);
+      if (cancelled) return;
+      onSignedInRef.current(role, screen);
+    };
+
     const form = $("f");
     const onSubmit = (event?: Event) => {
       event?.preventDefault();
+      if (locking) return;
       if (!(password instanceof HTMLInputElement)) return;
       const accountInput = $("id");
       const status = $("st");
       const button = $("go");
       if (!(accountInput instanceof HTMLInputElement) || !(status instanceof HTMLElement) || !(button instanceof HTMLButtonElement)) return;
       const account = accountInput.value.trim();
+      accountInput.value = account;
       status.className = "status";
       status.textContent = "";
       const accountOk = setErr("id", account ? "" : "Enter your account number.");
@@ -169,17 +209,22 @@ export function LoginScreen({ onSignedIn }: { onSignedIn: (role: RoleId) => void
         (accountOk ? password : accountInput).focus();
         return;
       }
-      button.disabled = true;
       button.textContent = "Checking…";
-      const role = roleFor(account);
-      void (async () => {
-        await wait(650);
-        if (cancelled) return;
-        status.textContent = "Signed in. Opening the deposit center…";
-        await wait(450);
-        if (cancelled) return;
-        onSignedInRef.current(role);
-      })();
+      void finishSignIn(roleFor(account), "queue", "Signed in. Opening the deposit center…");
+    };
+
+    const onGuest = (event?: Event) => {
+      event?.preventDefault();
+      void finishSignIn("RO-104", "queue", "Guest evaluator session active. Opening portal…");
+    };
+
+    const onRoleChip = (event: Event) => {
+      event.preventDefault();
+      const target = event.currentTarget;
+      if (!(target instanceof HTMLButtonElement)) return;
+      const role = (target.dataset.role ?? "RO-104") as RoleId;
+      const screen = (target.dataset.screen ?? "queue") as ScreenId;
+      void finishSignIn(role, screen, `Signing in as ${role}…`);
     };
 
     const onInput = (event: Event) => {
@@ -213,7 +258,23 @@ export function LoginScreen({ onSignedIn }: { onSignedIn: (role: RoleId) => void
     };
 
     const forgot = root.querySelector('a[href="#forgot"]');
-    const onForgot = (event: Event) => event.preventDefault();
+    const onForgot = (event: Event) => {
+      event.preventDefault();
+      const accountInput = $("id");
+      const status = $("st");
+      if (accountInput instanceof HTMLInputElement) accountInput.value = "AICTE-RO-104";
+      if (password instanceof HTMLInputElement) {
+        password.value = "Setu@2026#Verify";
+        paintSecurity();
+      }
+      clearFieldErrors();
+      if (status instanceof HTMLElement) {
+        status.className = "status";
+        status.textContent = "Demo credentials populated — click Login or Continue as Guest.";
+      }
+    };
+
+    const roleButtons = Array.from(root.querySelectorAll(".role-chip"));
 
     packets();
     fit();
@@ -224,6 +285,8 @@ export function LoginScreen({ onSignedIn }: { onSignedIn: (role: RoleId) => void
     paintSecurity();
     toggle?.addEventListener("click", onToggle);
     $("go")?.addEventListener("click", onSubmit);
+    $("guest-go")?.addEventListener("click", onGuest);
+    roleButtons.forEach((node) => node.addEventListener("click", onRoleChip));
     $("id")?.addEventListener("input", onInput);
     $("id")?.addEventListener("keydown", onEnter);
     password?.addEventListener("input", onInput);
@@ -241,6 +304,8 @@ export function LoginScreen({ onSignedIn }: { onSignedIn: (role: RoleId) => void
       window.removeEventListener("resize", fit);
       toggle?.removeEventListener("click", onToggle);
       $("go")?.removeEventListener("click", onSubmit);
+      $("guest-go")?.removeEventListener("click", onGuest);
+      roleButtons.forEach((node) => node.removeEventListener("click", onRoleChip));
       $("id")?.removeEventListener("input", onInput);
       $("id")?.removeEventListener("keydown", onEnter);
       password?.removeEventListener("input", onInput);

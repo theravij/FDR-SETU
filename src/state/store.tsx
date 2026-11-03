@@ -29,6 +29,12 @@ import type { BankEvidence, CaseSnapshot, Evaluation, InstrumentFields, Instrume
 
 export type FlowPhase = 1 | 2 | 3 | 4;
 
+export interface CaseUiState {
+  step: Step;
+  officerNote: string;
+  directorNote: string;
+}
+
 export interface DemoState {
   screen: ScreenId;
   tab: WorkspaceTab;
@@ -37,6 +43,7 @@ export interface DemoState {
   caseId: string;
   role: RoleId;
   cases: Record<string, CaseSnapshot>;
+  caseUi: Record<string, CaseUiState>;
   gatewayOutage: boolean;
   frozenHash: string | null;
   notice: Notice | null;
@@ -49,22 +56,23 @@ type DemoAction =
   | { type: "navigate"; screen?: ScreenId; tab?: WorkspaceTab; caseId?: string }
   | { type: "set-step"; step: Step }
   | { type: "set-phase"; phase: FlowPhase }
-  | { type: "confirm-v1"; note: string }
+  | { type: "confirm-v1"; note: string; asRole?: RoleId }
   | { type: "reset" }
   | { type: "cosmetic" }
-  | { type: "release"; remark: string }
+  | { type: "release"; remark: string; asRole?: RoleId }
   | { type: "forward" }
   | { type: "intake"; institutionName: string; aisheCode: string; bankName: string; serial: string; declared: number; scanned: number }
   | { type: "gateway" }
   | { type: "manual-letter" }
   | { type: "escalate" }
   | { type: "stale-hash" }
-  | { type: "upload-v2"; serial: string; amount: number; token: string; note: string; ocrMatched: boolean }
-  | { type: "vigilance"; caseId: string }
+  | { type: "upload-v2"; serial: string; amount: number; token: string; note: string; ocrMatched: boolean; asRole?: RoleId }
+  | { type: "vigilance"; caseId: string; asRole?: RoleId }
   | { type: "dismiss-notice" }
   | { type: "notify"; notice: Notice }
-  | { type: "sign-in"; role: RoleId }
-  | { type: "sign-out" };
+  | { type: "sign-in"; role: RoleId; screen?: ScreenId }
+  | { type: "sign-out" }
+  | { type: "set-case-note"; field: "officerNote" | "directorNote"; value: string };
 
 const STORAGE_KEY = "fdr-setu-demo-v1";
 
@@ -80,6 +88,38 @@ function loadStored(): { cases?: Record<string, CaseSnapshot>; gatewayOutage?: b
   }
 }
 
+function emptyCaseUi(step: Step = 1): CaseUiState {
+  return { step, officerNote: "", directorNote: "" };
+}
+
+export function deriveStep(snapshot: CaseSnapshot): Step {
+  if (snapshot.release.authorised) return 5;
+  const evaluation = evaluateCase(snapshot);
+  if (evaluation.releaseReady) return 5;
+  const hasV2 = snapshot.currentVersionId === "V2" || snapshot.versions.some((item) => item.versionId === "V2");
+  if (hasV2) return 4;
+  const current = snapshot.versions.find((item) => item.versionId === snapshot.currentVersionId) ?? snapshot.versions[0];
+  const shortfall = current ? current.fields.declaredAmountInr - current.fields.observedAmountInr : 0;
+  if (shortfall > 0 || snapshot.audit.some((event) => event.action === "OFFICER_OBSERVATION")) return 2;
+  return 1;
+}
+
+function ensureCaseUi(state: DemoState, caseId: string): CaseUiState {
+  if (state.caseUi[caseId]) return state.caseUi[caseId];
+  const snapshot = state.cases[caseId];
+  return emptyCaseUi(snapshot ? deriveStep(snapshot) : 1);
+}
+
+function writeCaseUi(state: DemoState, caseId: string, patch: Partial<CaseUiState>): DemoState {
+  const current = ensureCaseUi(state, caseId);
+  const next = { ...current, ...patch };
+  return {
+    ...state,
+    caseUi: { ...state.caseUi, [caseId]: next },
+    step: patch.step ?? (caseId === state.caseId ? next.step : state.step),
+  };
+}
+
 function fresh(step: Step = 1): DemoState {
   return {
     screen: "workspace",
@@ -89,6 +129,7 @@ function fresh(step: Step = 1): DemoState {
     caseId: "DEMO-001",
     role: "RO-104",
     cases: { ...seedCases(), "DEMO-001": buildDemo001(step) },
+    caseUi: { "DEMO-001": emptyCaseUi(step) },
     gatewayOutage: false,
     frozenHash: null,
     notice: null,
@@ -105,6 +146,9 @@ function createInitial(): DemoState {
     cases[id] = snapshot;
   }
   cases["DEMO-001"] = buildDemo001(1);
+  const caseUi: Record<string, CaseUiState> = {};
+  for (const id of Object.keys(cases)) caseUi[id] = emptyCaseUi(deriveStep(cases[id]));
+  caseUi["DEMO-001"] = emptyCaseUi(1);
   return {
     screen: "workspace",
     tab: "recheck",
@@ -113,6 +157,7 @@ function createInitial(): DemoState {
     caseId: "DEMO-001",
     role: "RO-104",
     cases,
+    caseUi,
     gatewayOutage: stored?.gatewayOutage ?? false,
     frozenHash: null,
     notice: null,
@@ -274,20 +319,41 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
   switch (action.type) {
     case "set-role":
       return { ...state, role: action.role };
-    case "navigate":
+    case "navigate": {
+      const nextCaseId = action.caseId && state.cases[action.caseId] ? action.caseId : state.caseId;
+      const caseChanged = nextCaseId !== state.caseId;
+      if (!caseChanged) {
+        return {
+          ...state,
+          screen: action.screen ?? state.screen,
+          tab: action.tab ?? state.tab,
+        };
+      }
+      const ui = ensureCaseUi(state, nextCaseId);
       return {
         ...state,
         screen: action.screen ?? state.screen,
         tab: action.tab ?? state.tab,
-        caseId: action.caseId && state.cases[action.caseId] ? action.caseId : state.caseId,
+        caseId: nextCaseId,
+        step: ui.step,
+        caseUi: { ...state.caseUi, [nextCaseId]: ui },
       };
-    case "set-step":
-      if (state.liveIntake) return { ...state, step: action.step, screen: "workspace", notice: null };
-      return withCanonicalStep(state, action.step, { screen: "workspace" });
+    }
+    case "set-step": {
+      const uiState = writeCaseUi(state, state.caseId, { step: action.step });
+      if (state.liveIntake || state.caseId !== "DEMO-001") {
+        return { ...uiState, step: action.step, screen: "workspace", notice: null };
+      }
+      const next = withCanonicalStep(uiState, action.step, { screen: "workspace" });
+      return writeCaseUi(next, "DEMO-001", { step: action.step });
+    }
     case "set-phase":
       if (action.phase === 1) return withCanonicalStep(state, 1, { screen: "workspace", phase: 1, role: "RO-104" });
       return { ...state, screen: "workspace", phase: action.phase, notice: null };
+    case "set-case-note":
+      return writeCaseUi(state, state.caseId, { [action.field]: action.value });
     case "confirm-v1": {
+      const role = action.asRole ?? state.role;
       if (state.liveIntake) {
         const current = state.cases["DEMO-001"];
         const observed = current.versions[0]?.fields.observedAmountInr ?? 0;
@@ -310,44 +376,82 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
           },
           { actor: "RO-104", action: "OFFICER_OBSERVATION", detail: action.note },
         );
-        return {
-          ...state,
-          screen: "workspace",
-          phase: 2,
-          step: 2,
-          role: "RO-104",
-          notice: null,
-          cases: { ...state.cases, "DEMO-001": noted },
-        };
+        return writeCaseUi(
+          {
+            ...state,
+            screen: "workspace",
+            phase: 2,
+            step: 2,
+            role: "RO-104",
+            notice: action.asRole && action.asRole !== state.role
+              ? { tone: "ok", title: `Active role switched to ${action.asRole}`, body: "Discrepancy flagged and returned to institution." }
+              : null,
+            cases: { ...state.cases, "DEMO-001": noted },
+          },
+          "DEMO-001",
+          { step: 2, officerNote: action.note },
+        );
       }
       const stepped = withCanonicalStep(state, 2, { screen: "workspace", phase: 2, role: "RO-104" });
       const noted = writeNote(stepped.cases["DEMO-001"], { actor: "RO-104", action: "OFFICER_OBSERVATION", detail: action.note });
-      return { ...stepped, cases: { ...stepped.cases, "DEMO-001": noted } };
+      return writeCaseUi(
+        {
+          ...stepped,
+          role,
+          cases: { ...stepped.cases, "DEMO-001": noted },
+          notice: action.asRole && action.asRole !== state.role
+            ? { tone: "ok", title: `Active role switched to ${action.asRole}`, body: "Discrepancy flagged and returned to institution." }
+            : null,
+        },
+        "DEMO-001",
+        { step: 2, officerNote: action.note },
+      );
     }
     case "forward":
-      return { ...state, step: 5, screen: "workspace", tab: "recheck", phase: 4, notice: null };
-    case "intake":
-      return {
-        ...state,
-        liveIntake: true,
-        screen: "workspace",
-        tab: "recheck",
-        step: 1,
-        phase: 1,
-        caseId: "DEMO-001",
-        role: "RO-104",
-        notice: null,
-        frozenHash: null,
-        cases: { ...state.cases, "DEMO-001": liveFiling(action) },
-      };
+      return writeCaseUi(
+        { ...state, step: 5, screen: "workspace", tab: "recheck", phase: 4, notice: null },
+        state.caseId,
+        { step: 5 },
+      );
+    case "intake": {
+      const shortfall = action.declared > action.scanned;
+      const step: Step = shortfall ? 1 : 5;
+      return writeCaseUi(
+        {
+          ...state,
+          liveIntake: true,
+          screen: "workspace",
+          tab: "recheck",
+          step,
+          phase: shortfall ? 1 : 4,
+          caseId: "DEMO-001",
+          role: "RO-104",
+          notice: null,
+          frozenHash: null,
+          cases: { ...state.cases, "DEMO-001": liveFiling(action) },
+        },
+        "DEMO-001",
+        { step, officerNote: "", directorNote: "" },
+      );
+    }
     case "reset":
-      return fresh(1);
+      return {
+        ...fresh(1),
+        authenticated: state.authenticated,
+        role: state.role,
+        screen: state.authenticated ? "queue" : "workspace",
+        notice: {
+          tone: "ok",
+          title: "Workspace reset to initial state",
+          body: "All five default cases restored. Custom filings and per-case notes cleared.",
+        },
+      };
     case "dismiss-notice":
       return { ...state, notice: null };
     case "sign-in":
-      return { ...state, authenticated: true, role: action.role, screen: "queue", notice: null };
+      return { ...state, authenticated: true, role: action.role, screen: action.screen ?? "queue", notice: null };
     case "sign-out":
-      return { ...state, authenticated: false };
+      return { ...state, authenticated: false, notice: null };
     case "notify":
       return { ...state, notice: action.notice };
     case "cosmetic": {
@@ -366,11 +470,12 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
       });
     }
     case "release": {
+      const actor = action.asRole ?? state.role;
       const current = state.cases[state.caseId];
       const presented = evaluateCase(current).evaluationHash;
-      const decision = decideRelease(current, state.role, presented);
+      const decision = decideRelease(current, actor, presented);
       if (!decision.ok) {
-        return putCase(state, decision.snapshot, {
+        return putCase({ ...state, role: action.asRole ?? state.role }, decision.snapshot, {
           tone: decision.http === 403 ? "deny" : "warn",
           title: decision.http === 403 ? "Director approval required" : decision.http === 409 ? "Case is not ready" : decision.title,
           body: decision.http === 403 ? "Only DIR-01 can authorise release." : decision.body,
@@ -378,13 +483,21 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
         });
       }
       const noted = writeNote(decision.snapshot, { actor: "DIR-01", action: "DIRECTOR_REMARK", detail: action.remark });
-      return {
-        ...state,
-        screen: "workspace",
-        tab: "result",
-        notice: null,
-        cases: { ...state.cases, [noted.caseId]: noted },
-      };
+      const switched = Boolean(action.asRole && action.asRole !== state.role);
+      return writeCaseUi(
+        {
+          ...state,
+          role: actor,
+          screen: "workspace",
+          tab: "result",
+          notice: switched
+            ? { tone: "ok", title: `Active role switched to ${actor} · Record Authorised`, body: "Verification record authorised." }
+            : null,
+          cases: { ...state.cases, [noted.caseId]: noted },
+        },
+        noted.caseId,
+        { step: 5, directorNote: action.remark },
+      );
     }
     case "gateway":
       return {
@@ -452,13 +565,15 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
       };
     }
     case "upload-v2": {
-      if (!can(state.role, "upload-v2")) {
+      const actor = action.asRole ?? state.role;
+      if (!can(actor, "upload-v2")) {
         return refuse(
           state,
           "Submission refused",
           "Switch the acting role to INST-01 to submit the corrected instrument.",
         );
       }
+      const step: Step = action.ocrMatched ? 4 : 3;
       const canonical = !state.liveIntake && action.serial === "FDR/PNB/2025/91007" && action.amount === 3_500_000;
       const base = canonical
         ? withCanonicalStep(state, 4, { screen: "workspace", tab: "recheck", phase: 3, role: "INST-01" })
@@ -468,7 +583,7 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
             screen: "workspace" as const,
             tab: "recheck" as const,
             phase: 3 as const,
-            step: (action.ocrMatched ? 4 : 3) as Step,
+            step,
             role: "INST-01" as const,
             notice: null,
             cases: { ...state.cases, "DEMO-001": liveReplacement(state.cases["DEMO-001"], action) },
@@ -478,22 +593,44 @@ function reduce(state: DemoState, action: DemoAction): DemoState {
         action: "INSTITUTION_RESUBMISSION",
         detail: action.note || `Replacement ${action.serial} submitted for ${action.amount}. Gateway token ${action.token}.`,
       });
-      return { ...base, cases: { ...base.cases, "DEMO-001": noted }, notice: null };
+      const switched = Boolean(action.asRole && action.asRole !== state.role);
+      return writeCaseUi(
+        {
+          ...base,
+          role: "INST-01",
+          cases: { ...base.cases, "DEMO-001": noted },
+          notice: switched
+            ? { tone: "ok", title: "Active role switched to INST-01 · V2 Submitted", body: "Corrected instrument accepted for selective recheck." }
+            : null,
+        },
+        "DEMO-001",
+        { step },
+      );
     }
     case "vigilance": {
-      if (!can(state.role, "vigilance-hold")) {
+      const actor = action.asRole ?? state.role;
+      if (!can(actor, "vigilance-hold")) {
         return refuse(state, "Hold refused", `${state.role} cannot place or lift a vigilance hold. HTTP 403. Required role: VIG-22.`);
       }
       const current = state.cases[action.caseId];
       if (!current) return state;
-      const next = applyVigilanceHold(current, state.role, !current.vigilanceHold);
-      return putCase(state, next, {
-        tone: "ok",
-        title: next.vigilanceHold ? "Vigilance hold placed" : "Vigilance hold lifted",
-        body: next.vigilanceHold
-          ? `${action.caseId} cannot be released while the hold stands. Instrument checks are unchanged.`
-          : `${action.caseId} hold lifted. Release still requires DIR-01 and a current evaluation hash.`,
-      });
+      const next = applyVigilanceHold(current, actor, !current.vigilanceHold);
+      const switched = Boolean(action.asRole && action.asRole !== state.role);
+      return putCase(
+        { ...state, role: actor },
+        next,
+        {
+          tone: "ok",
+          title: switched
+            ? `Active role switched to ${actor} · ${next.vigilanceHold ? "Hold Placed" : "Hold Lifted"}`
+            : next.vigilanceHold
+              ? "Vigilance hold placed"
+              : "Vigilance hold lifted",
+          body: next.vigilanceHold
+            ? `${formatCaseRef(action.caseId)} cannot be released while the hold stands. Instrument checks are unchanged.`
+            : `${formatCaseRef(action.caseId)} hold lifted. Release still requires DIR-01 and a current evaluation hash.`,
+        },
+      );
     }
     default:
       return state;
@@ -508,23 +645,25 @@ interface DemoApi {
   navigate: (partial: { screen?: ScreenId; tab?: WorkspaceTab; caseId?: string }) => void;
   setStep: (step: Step) => void;
   setPhase: (phase: FlowPhase) => void;
-  confirmV1: (note?: string) => void;
+  setOfficerNote: (value: string) => void;
+  setDirectorNote: (value: string) => void;
+  confirmV1: (note?: string, asRole?: RoleId) => void;
   submitV2: () => void;
   forwardReview: () => void;
   intakeLive: (input: { institutionName: string; aisheCode: string; bankName: string; serial: string; declared: number; scanned: number }) => void;
   reset: () => void;
   dismissNotice: () => void;
   cosmeticRescan: () => void;
-  attemptRelease: (remark?: string) => void;
+  attemptRelease: (remark?: string, asRole?: RoleId) => void;
   toggleGateway: () => void;
   recordManualLetter: () => void;
   escalateDemo005: () => void;
   runStaleHashBlock: () => void;
-  uploadV2: (input?: { serial: string; amount: number; token: string; note: string; ocrMatched: boolean }) => void;
-  toggleVigilance: (caseId: string) => void;
+  uploadV2: (input?: { serial: string; amount: number; token: string; note: string; ocrMatched: boolean; asRole?: RoleId }) => void;
+  toggleVigilance: (caseId: string, asRole?: RoleId) => void;
   exportJson: () => void;
   exportCsv: () => void;
-  signIn: (role: RoleId) => void;
+  signIn: (role: RoleId, screen?: ScreenId) => void;
   signOut: () => void;
 }
 
@@ -568,7 +707,9 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       navigate: (partial) => send({ type: "navigate", ...partial }),
       setStep: (step) => send({ type: "set-step", step }),
       setPhase: (phase) => send({ type: "set-phase", phase }),
-      confirmV1: (note = "") => send({ type: "confirm-v1", note }),
+      setOfficerNote: (value) => send({ type: "set-case-note", field: "officerNote", value }),
+      setDirectorNote: (value) => send({ type: "set-case-note", field: "directorNote", value }),
+      confirmV1: (note = "", asRole) => send({ type: "confirm-v1", note, asRole }),
       submitV2: () => send({ type: "upload-v2", serial: "FDR/PNB/2025/91007", amount: 3_500_000, token: "PNB-GW-2026-44802", note: "", ocrMatched: true }),
       forwardReview: () => send({ type: "forward" }),
       intakeLive: (input) => send({ type: "intake", ...input }),
@@ -578,7 +719,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       },
       dismissNotice: () => send({ type: "dismiss-notice" }),
       cosmeticRescan: () => send({ type: "cosmetic" }),
-      attemptRelease: (remark = "") => send({ type: "release", remark }),
+      attemptRelease: (remark = "", asRole) => send({ type: "release", remark, asRole }),
       toggleGateway: () => send({ type: "gateway" }),
       recordManualLetter: () => send({ type: "manual-letter" }),
       escalateDemo005: () => send({ type: "escalate" }),
@@ -591,15 +732,17 @@ export function DemoProvider({ children }: { children: ReactNode }) {
           token: input?.token ?? "PNB-GW-2026-44802",
           note: input?.note ?? "",
           ocrMatched: input?.ocrMatched ?? true,
+          asRole: input?.asRole,
         }),
-      toggleVigilance: (caseId) => send({ type: "vigilance", caseId }),
-      signIn: (role) => send({ type: "sign-in", role }),
+      toggleVigilance: (caseId, asRole) => send({ type: "vigilance", caseId, asRole }),
+      signIn: (role, screen) => send({ type: "sign-in", role, screen }),
       signOut: () => send({ type: "sign-out" }),
       exportJson: () => {
         const snapshot = state.cases[state.caseId];
+        const ref = formatCaseRef(snapshot.caseId);
         void evaluateCaseWithFallback(snapshot).then(({ evaluation }) => {
           downloadText(
-            `${snapshot.caseId}-evaluate-case.json`,
+            `${ref}-evaluate-case.json`,
             `${JSON.stringify(evaluation, null, 2)}\n`,
             "application/json",
           );
@@ -608,13 +751,13 @@ export function DemoProvider({ children }: { children: ReactNode }) {
             notice: {
               tone: "ok",
               title: "JSON exported",
-              body: `${formatCaseRef(snapshot.caseId)} verification file downloaded.`,
+              body: `${ref} verification file downloaded.`,
             },
           });
         });
       },
       exportCsv: () => {
-        downloadText("fdr-setu-register.csv", registerCsv(Object.values(state.cases)), "text/csv");
+        downloadText("AICTE-FDR-register-2026.csv", registerCsv(Object.values(state.cases)), "text/csv");
         dispatch({
           type: "notify",
           notice: {
